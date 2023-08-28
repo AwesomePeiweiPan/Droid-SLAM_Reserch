@@ -22,6 +22,27 @@ def show_image(image):
     cv2.imshow('image', image / 255.0)
     cv2.waitKey(1)
 
+def image_stream_stereo(datapath, image_size=[384, 512], intrinsics_vec=[320.0, 320.0, 320.0, 240.0], stereo=False):
+    """ image generator """
+
+    # read all png images in folder
+    ht0, wd0 = [480, 640]
+    images_left = sorted(glob.glob(os.path.join(datapath, 'image_left/*.png')))
+    images_right = sorted(glob.glob(os.path.join(datapath, 'image_right/*.png')))
+
+    data = []
+    for t in range(len(images_left)):
+        images = [ cv2.resize(cv2.imread(images_left[t]), (image_size[1], image_size[0])) ]
+        if stereo:
+            images += [ cv2.resize(cv2.imread(images_right[t]), (image_size[1], image_size[0])) ]
+
+        images = torch.from_numpy(np.stack(images, 0)).permute(0,3,1,2)
+        intrinsics = .8 * torch.as_tensor(intrinsics_vec)
+
+        data.append((t, images, intrinsics))
+
+    return data
+
 def image_stream(imagedir, calib, stride):
     """ image generator """
 
@@ -105,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument("--reconstruction_path", help="path to saved reconstruction")
     args = parser.parse_args()
 
-    args.stereo = False
+    args.stereo = True
     torch.multiprocessing.set_start_method('spawn')
 
     droid = None
@@ -115,7 +136,7 @@ if __name__ == '__main__':
         args.upsample = True
 
     tstamps = []
-    for (t, image, intrinsics) in tqdm(image_stream(args.imagedir, args.calib, args.stride)):
+    for (t, image, intrinsics) in tqdm(image_stream_stereo(args.imagedir)):
         if t < args.t0:
             continue
 
@@ -131,4 +152,4 @@ if __name__ == '__main__':
     if args.reconstruction_path is not None:
         save_reconstruction(droid, args.reconstruction_path)
 
-    traj_est = droid.terminate(image_stream(args.imagedir, args.calib, args.stride))
+    traj_est = droid.terminate(image_stream_stereo(args.imagedir))
