@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# Data download from Peiwei Pan
+/data
+/datasets
+/droid.pth
+
 # Distribution / packaging
 .Python
 build/
