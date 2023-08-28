@@ -22,6 +22,7 @@ def show_image(image):
     cv2.imshow('image', image / 255.0)
     cv2.waitKey(1)
 
+#Stereo 图像输入函数
 def image_stream_stereo(datapath, image_size=[384, 512], intrinsics_vec=[320.0, 320.0, 320.0, 240.0], stereo=False):
     """ image generator """
 
