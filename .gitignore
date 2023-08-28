@@ -145,7 +145,7 @@ build
 dist
 *.egg-info
 #*.vscode/
-*.pth
+#*.pth
 tests
 checkpoints
 datasets
