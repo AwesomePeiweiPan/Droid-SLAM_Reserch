@@ -16,7 +16,7 @@
             "request": "launch",
 
             // "program": "${file}",
-            "program": "/home/peiweipan/Projects/droidslam/demo.py",
+            "program": "/home/peiweipan/Projects/DroidSlam/demo.py",
 
             //
             "console": "integratedTerminal",
@@ -27,7 +27,7 @@
             
             //args可以设置命令行的参数
             //"args" : ["--imagedir=data/abandonedfactory", "--calib=calib/tartan.txt", "--stride=2", "--disable_vis"]
-            "args" : ["--imagedir=datasets/TartanAir/seasidetown/P000", "--calib=calib/tartan.txt", "--stride=2", "--disable_vis"]
+            "args" : ["--imagedir=datasets/TartanAir/seasidetown/P000", "--disable_vis"]
             //"args" : ["--imagedir=datasets/TartanAir/seasidetown/P000", "--disable_vis"]
         }
     ]

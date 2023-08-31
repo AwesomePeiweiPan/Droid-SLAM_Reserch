@@ -1,4 +1,5 @@
 import torch
+#torch.nn 模块是 PyTorch 中的一个重要模块，用于定义神经网络相关的类和函数
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -127,16 +128,31 @@ class BasicEncoder(nn.Module):
         elif self.norm_fn == 'batch':
             self.norm1 = nn.BatchNorm2d(DIM)
 
+        #创建norm1层，使用nn.InstanceNorm2d类。这层是一个2D实例归一化层，用于对输入进行实例归一化操作
+        #DIM表示归一化通道数，这里使用global参数32
+        #实例归一化（Instance Normalization）是一种深度学习中的归一化方法，通常用于神经网络中的中间层。
+        #它通过对每个样本的每个通道进行归一化，使得每个样本在每个通道上的分布接近标准正态分布。
+        #这有助于加速收敛、提升模型的稳定性，并且在图像生成任务中也能够产生更好的效果。
         elif self.norm_fn == 'instance':
             self.norm1 = nn.InstanceNorm2d(DIM)
 
+
+        #nn.Sequential() 创建了一个空的Sequential模型。
+        #这意味着 self.norm1 实际上不会对通过它的数据执行任何操作。
+        #可选的规范化层：在某些神经网络架构中，你可能希望可选地包含或排除规范化层（如Batch Normalization、Layer Normalization等）。
+        #通过将 self.norm1 设置为一个空的 nn.Sequential() 对象，你可以在不更改其他代码的情况下轻松地排除规范化。
         elif self.norm_fn == 'none':
             self.norm1 = nn.Sequential()
 
+        ###构建一个卷积神经网络的一部分 CNN
+        #创建二维卷积层 参数含义: 输入通道数，输出通道数，卷积核7x7，卷积步长2，输入图像周围填充3个像素
         self.conv1 = nn.Conv2d(3, DIM, kernel_size=7, stride=2, padding=3)
+        #创建ReLU激活函数
         self.relu1 = nn.ReLU(inplace=True)
-
+        
+        #用于后续的网络层中，表示输入的通道数
         self.in_planes = DIM
+        #
         self.layer1 = self._make_layer(DIM,  stride=1)
         self.layer2 = self._make_layer(2*DIM, stride=2)
         self.layer3 = self._make_layer(4*DIM, stride=2)

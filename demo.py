@@ -23,7 +23,7 @@ def show_image(image):
     cv2.waitKey(1)
 
 #Stereo 图像输入函数
-def image_stream_stereo(datapath, image_size=[384, 512], intrinsics_vec=[320.0, 320.0, 320.0, 240.0], stereo=False):
+def image_stream_stereo(datapath, image_size=[384, 512], intrinsics_vec=[320.0, 320.0, 320.0, 240.0], stereo=True):
     """ image generator """
 
     # read all png images in folder
@@ -137,7 +137,9 @@ if __name__ == '__main__':
         args.upsample = True
 
     tstamps = []
+    
     for (t, image, intrinsics) in tqdm(image_stream_stereo(args.imagedir)):
+    #for (t, image, intrinsics) in tqdm(image_stream(args.imagedir, args.calib, args.stride)):
         if t < args.t0:
             continue
 
@@ -153,4 +155,9 @@ if __name__ == '__main__':
     if args.reconstruction_path is not None:
         save_reconstruction(droid, args.reconstruction_path)
 
+    #traj_est = droid.terminate(image_stream(args.imagedir, args.calib, args.stride))
     traj_est = droid.terminate(image_stream_stereo(args.imagedir))
+
+
+#python demo.py --imagedir=data/abandonedfactory --calib=calib/tartan.txt --stride=2 --disable_vis
+#python demo.py --imagedir=datasets/TartanAir/seasidetown/P000 --disable_vis

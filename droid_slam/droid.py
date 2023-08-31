@@ -15,6 +15,7 @@ from torch.multiprocessing import Process
 
 class Droid:
     def __init__(self, args):
+        #Droid类继承Object父类
         super(Droid, self).__init__()
         self.load_weights(args.weights)
         self.args = args
@@ -44,7 +45,7 @@ class Droid:
 
     def load_weights(self, weights):
         """ load trained model weights """
-
+        #在控制台输出 droid.pth 字样
         print(weights)
         self.net = DroidNet()
         state_dict = OrderedDict([
