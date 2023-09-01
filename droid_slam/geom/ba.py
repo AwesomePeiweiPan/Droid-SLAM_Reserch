@@ -70,9 +70,9 @@ def BA(target, weight, eta, poses, disps, intrinsics, ii, jj, fixedp=1, rig=1):
     M = kx.shape[0]
 
     # only optimize keyframe poses
-    P = P // rig - fixedp
-    ii = ii // rig - fixedp
-    jj = jj // rig - fixedp
+    P = P - fixedp
+    ii = ii - fixedp
+    jj = jj - fixedp
 
     H = safe_scatter_add_mat(Hii, ii, ii, P, P) + \
         safe_scatter_add_mat(Hij, ii, jj, P, P) + \
@@ -106,7 +106,7 @@ def BA(target, weight, eta, poses, disps, intrinsics, ii, jj, fixedp=1, rig=1):
     return poses, disps
 
 
-def MoBA(target, weight, eta, poses, disps, intrinsics, ii, jj, fixedp=1, rig=1):
+def MoBA(target, weight, eta, poses, disps, intrinsics, ii, jj, fixedp=1):
     """ Motion only bundle adjustment """
 
     B, P, ht, wd = disps.shape
@@ -135,9 +135,9 @@ def MoBA(target, weight, eta, poses, disps, intrinsics, ii, jj, fixedp=1, rig=1)
     vj = torch.matmul(wJjT, r).squeeze(-1)
 
     # only optimize keyframe poses
-    P = P // rig - fixedp
-    ii = ii // rig - fixedp
-    jj = jj // rig - fixedp
+    P = P - fixedp
+    ii = ii - fixedp
+    jj = jj - fixedp
 
     H = safe_scatter_add_mat(Hii, ii, ii, P, P) + \
         safe_scatter_add_mat(Hij, ii, jj, P, P) + \

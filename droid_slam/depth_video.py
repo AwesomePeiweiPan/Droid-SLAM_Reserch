@@ -178,7 +178,7 @@ class DepthVideo:
 
         return d
 
-    def ba(self, target, weight, eta, ii, jj, t0=1, t1=None, itrs=2, lm=1e-4, ep=0.1, motion_only=False):
+    def cuda_ba(self, target, weight, eta, ii, jj, t0=1, t1=None, itrs=2, lm=1e-4, ep=0.1, motion_only=False):
         """ dense bundle adjustment (DBA) """
 
         with self.get_lock():
@@ -189,5 +189,24 @@ class DepthVideo:
 
             droid_backends.ba(self.poses, self.disps, self.intrinsics[0], self.disps_sens,
                 target, weight, eta, ii, jj, t0, t1, itrs, lm, ep, motion_only)
+
+            self.disps.clamp_(min=0.001)
+
+    def py_ba(self, target, weight, eta, ii, jj, t0=1, t1=None, itrs=2, lm=1e-4, ep=0.1, motion_only=False):
+        """ dense bundle adjustment (DBA) """
+
+        with self.get_lock():
+
+            # [t0, t1] window of bundle adjustment optimization
+            if t1 is None:
+                t1 = max(ii.max().item(), jj.max().item()) + 1
+
+            from geom.ba import BA
+            poses = lietorch.SE3(self.poses[:t1][None])
+            disps = self.disps[:t1][None]
+            for _ in range(itrs):
+                poses, disps = BA(target, weight, eta, poses, disps, self.intrinsics[None], ii, jj, fixedp=t0)
+            self.poses[:t1] = poses.data[0]
+            self.disps[:t1] = disps[0]
 
             self.disps.clamp_(min=0.001)

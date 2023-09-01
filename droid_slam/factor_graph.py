@@ -233,13 +233,17 @@ class FactorGraph:
 
             damping = .2 * self.damping[torch.unique(ii)].contiguous() + EP
 
-            target = target.view(-1, ht, wd, 2).permute(0,3,1,2).contiguous()
-            weight = weight.view(-1, ht, wd, 2).permute(0,3,1,2).contiguous()
+            if 0:
+                target = target.view(-1, ht, wd, 2).permute(0,3,1,2).contiguous()
+                weight = weight.view(-1, ht, wd, 2).permute(0,3,1,2).contiguous()
+                # dense bundle adjustment
+                self.video.cuda_ba(target, weight, damping, ii, jj, t0, t1, 
+                    itrs=itrs, lm=1e-4, ep=0.1, motion_only=motion_only)
+            else:
+                # dense bundle adjustment
+                self.video.py_ba(target, weight, damping, ii, jj, t0, t1, 
+                    itrs=itrs, lm=1e-4, ep=0.1, motion_only=motion_only)
 
-            # dense bundle adjustment
-            self.video.ba(target, weight, damping, ii, jj, t0, t1, 
-                itrs=itrs, lm=1e-4, ep=0.1, motion_only=motion_only)
-        
             if self.upsample:
                 self.video.upsample(torch.unique(self.ii), upmask)
 
@@ -290,7 +294,7 @@ class FactorGraph:
             weight = self.weight.view(-1, ht, wd, 2).permute(0,3,1,2).contiguous()
 
             # dense bundle adjustment
-            self.video.ba(target, weight, damping, self.ii, self.jj, 1, t, 
+            self.video.cuda_ba(target, weight, damping, self.ii, self.jj, 1, t, 
                 itrs=itrs, lm=1e-5, ep=1e-2, motion_only=False)
 
             self.video.dirty[:t] = True

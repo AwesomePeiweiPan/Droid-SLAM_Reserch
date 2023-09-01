@@ -33,7 +33,7 @@ def white_balance(img):
     result = cv2.cvtColor(result, cv2.COLOR_LAB2BGR)
     return result
 
-def create_camera_actor(g, scale=0.05):
+def create_camera_actor(g, scale=0.2):
     """ build open3d camera polydata """
     camera_actor = o3d.geometry.LineSet(
         points=o3d.utility.Vector3dVector(scale * CAM_POINTS),
