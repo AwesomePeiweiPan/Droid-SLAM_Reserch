@@ -24,9 +24,11 @@ class DroidFrontend:
         self.iters1 = 4
         self.iters2 = 2
 
+        #预热阶段:初始化为8
         self.warmup = args.warmup
         self.beta = args.beta
         self.frontend_nms = args.frontend_nms
+        #keyframe_thresh 可以基于:时间间隔:有的SLAM系统会简单地每隔一定数量的帧选取一个关键帧，这也可以用keyframe_thresh来控制。这里初始化为4.0
         self.keyframe_thresh = args.keyframe_thresh
         self.frontend_window = args.frontend_window
         self.frontend_thresh = args.frontend_thresh
@@ -78,7 +80,7 @@ class DroidFrontend:
         self.t0 = 0
         self.t1 = self.video.counter.value
 
-        self.graph.add_neighborhood_factors(self.t0, self.t1, r=3)
+        self.graph.add_neighborhood_factors(self.t0, self.t1, r=3)  #graph的ii,jj,target[1,22,48,64,2]还有神经网络赋值
 
         for itr in range(8):
             self.graph.update(1, use_inactive=True)

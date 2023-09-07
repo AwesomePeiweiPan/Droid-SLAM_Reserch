@@ -122,12 +122,20 @@ class BasicEncoder(nn.Module):
         self.norm_fn = norm_fn
         self.multidim = multidim
 
+        ###批量归一化
+        #这是最常用的归一化方法之一，通常用于卷积神经网络（CNNs）和全连接层（Dense layers）。
+        #在每个小批量的数据中，这种归一化技术独立地对每个输入特征进行零均值和单位方差的归一化。
         if self.norm_fn == 'group':
             self.norm1 = nn.GroupNorm(num_groups=8, num_channels=DIM)
-            
+
+        ###Batch normalization
+        #它有助于解决深度网络训练中的一系列问题，包括梯度消失/梯度爆炸、模型训练不稳定等 
         elif self.norm_fn == 'batch':
             self.norm1 = nn.BatchNorm2d(DIM)
 
+        ###实例归一化
+        #神经网络中的归一化层用于改善网络训练的稳定性和收敛速度。
+        #通过归一化，网络中的每一层可以在一个更稳定的数值范围内接收数据，这通常可以加快训练速度，并有时还能提高模型性能
         #创建norm1层，使用nn.InstanceNorm2d类。这层是一个2D实例归一化层，用于对输入进行实例归一化操作
         #DIM表示归一化通道数，这里使用global参数32
         #实例归一化（Instance Normalization）是一种深度学习中的归一化方法，通常用于神经网络中的中间层。
@@ -189,6 +197,7 @@ class BasicEncoder(nn.Module):
                     nn.init.constant_(m.bias, 0)
 
     def _make_layer(self, dim, stride=1):
+        #layer中含有conv1,conv2,norm1,norm2
         layer1 = ResidualBlock(self.in_planes, dim, self.norm_fn, stride=stride)
         layer2 = ResidualBlock(dim, dim, self.norm_fn, stride=1)
         layers = (layer1, layer2)
@@ -198,7 +207,8 @@ class BasicEncoder(nn.Module):
 
     def forward(self, x):
         b, n, c1, h1, w1 = x.shape
-        x = x.view(b*n, c1, h1, w1)
+        #.view()方法用于调整张量的形状而不改变其数据。在这里，张量x的形状被改变为(b * n, c1, h1, w1)。
+        x = x.view(b*n, c1, h1, w1) 
 
         x = self.conv1(x)
         x = self.norm1(x)

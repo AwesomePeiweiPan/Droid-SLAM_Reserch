@@ -10,16 +10,22 @@ from droid_net import cvx_upsample
 import geom.projective_ops as pops
 
 class DepthVideo:
-    def __init__(self, image_size=[480, 640], buffer=1024, stereo=False, device="cuda:0"):
+    def __init__(self, image_size=[480, 640], buffer=1024, stereo=False, device="cuda:0"):  #buffer为数据缓存
                 
-        # current keyframe count
+        ###current keyframe count
+        #使用multiprocessing库的示例，特别是使用Value类创建共享变量。在多进程编程中，共享变量是一种在多个进程间共享状态或数据的机制。
+        #Value 创建一个在多个进程之间共享的变量。'i' 表示该变量是一个整数（integer）。0 是该共享整数的初始值。
+        #self.counter 现在是一个可以在多个进程之间共享和修改的整数。
         self.counter = Value('i', 0)
         self.ready = Value('i', 0)
         self.ht = ht = image_size[0]
         self.wd = wd = image_size[1]
 
         ### state attributes ###
+        #创建了全零浮点数[buffer]维度张量，并且存储在CUDA设备（通常是GPU）上。然后，这个张量被配置为可以在不同进程间共享内存
+        #.share_memory_() 方法用于将一个张量（Tensor）的存储放入一个共享内存区域。这使得在多进程环境下，不同的进程可以访问和修改同一个张量
         self.tstamp = torch.zeros(buffer, device="cuda", dtype=torch.float).share_memory_()
+        #创建全零，非负数，0-255的[buffer,3,ht,wd]维度的张量
         self.images = torch.zeros(buffer, 3, ht, wd, device="cuda", dtype=torch.uint8)
         self.dirty = torch.zeros(buffer, device="cuda", dtype=torch.bool).share_memory_()
         self.red = torch.zeros(buffer, device="cuda", dtype=torch.bool).share_memory_()
@@ -29,6 +35,7 @@ class DepthVideo:
         self.disps_up = torch.zeros(buffer, ht, wd, device="cuda", dtype=torch.float).share_memory_()
         self.intrinsics = torch.zeros(buffer, 4, device="cuda", dtype=torch.float).share_memory_()
 
+        #不为stereo, c=1;    为stereo, c=2
         self.stereo = stereo
         c = 1 if not self.stereo else 2
 
@@ -41,9 +48,9 @@ class DepthVideo:
         self.poses[:] = torch.as_tensor([0, 0, 0, 0, 0, 0, 1], dtype=torch.float, device="cuda")
         
     def get_lock(self):
-        return self.counter.get_lock()
+        return self.counter.get_lock()  
 
-    def __item_setter(self, index, item):
+    def __item_setter(self, index, item):   #self.video.append(tstamp, image[0], Id, 1.0, depth, intrinsics / 8.0, gmap, net[0,0], inp[0,0])
         if isinstance(index, int) and index >= self.counter.value:
             self.counter.value = index + 1
         
@@ -51,14 +58,14 @@ class DepthVideo:
             self.counter.value = index.max().item() + 1
 
         # self.dirty[index] = True
-        self.tstamp[index] = item[0]
+        self.tstamp[index] = item[0]    
         self.images[index] = item[1]
 
         if item[2] is not None:
             self.poses[index] = item[2]
 
         if item[3] is not None:
-            self.disps[index] = item[3]
+            self.disps[index] = item[3] 
 
         if item[4] is not None:
             depth = item[4][3::8,3::8]
@@ -98,6 +105,7 @@ class DepthVideo:
 
         return item
 
+    #一个线程安全的实现，用于向某种数据结构添加元素。它使用了一个锁来确保 append 操作是线程安全的，并使用 self.counter 的当前值作为索引
     def append(self, *item):
         with self.get_lock():
             self.__item_setter(self.counter.value, item)
@@ -105,7 +113,7 @@ class DepthVideo:
 
     ### geometric operations ###
 
-    @staticmethod
+    @staticmethod #@staticmethod 是一个装饰器，用于指示一个方法是静态方法。静态方法是那些不需要访问实例变量或类变量的方法。因为静态方法不依赖于类的实例，它们可以直接通过类来调用，而不是类的实例。
     def format_indicies(ii, jj):
         """ to device, long, {-1} """
 
@@ -115,7 +123,7 @@ class DepthVideo:
         if not isinstance(jj, torch.Tensor):
             jj = torch.as_tensor(jj)
 
-        ii = ii.to(device="cuda", dtype=torch.long).reshape(-1)
+        ii = ii.to(device="cuda", dtype=torch.long).reshape(-1) #成为一维张量
         jj = jj.to(device="cuda", dtype=torch.long).reshape(-1)
 
         return ii, jj
@@ -139,7 +147,7 @@ class DepthVideo:
     def reproject(self, ii, jj):
         """ project points from ii -> jj """
         ii, jj = DepthVideo.format_indicies(ii, jj)
-        Gs = lietorch.SE3(self.poses[None])
+        Gs = lietorch.SE3(self.poses[None]) #[1,512,7]
 
         coords, valid_mask = \
             pops.projective_transform(Gs, self.disps[None], self.intrinsics[None], ii, jj)
@@ -202,8 +210,8 @@ class DepthVideo:
                 t1 = max(ii.max().item(), jj.max().item()) + 1
 
             from geom.ba import BA
-            poses = lietorch.SE3(self.poses[:t1][None])
-            disps = self.disps[:t1][None]
+            poses = lietorch.SE3(self.poses[:t1][None]) #[1,8,7]
+            disps = self.disps[:t1][None] #【1,8,48,64】
             for _ in range(itrs):
                 poses, disps = BA(target, weight, eta, poses, disps, self.intrinsics[None], ii, jj, fixedp=t0)
             self.poses[:t1] = poses.data[0]

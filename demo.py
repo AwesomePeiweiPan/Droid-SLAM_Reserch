@@ -161,3 +161,4 @@ if __name__ == '__main__':
 
 #python demo.py --imagedir=data/abandonedfactory --calib=calib/tartan.txt --stride=2 --disable_vis
 #python demo.py --imagedir=datasets/TartanAir/seasidetown/P000 --disable_vis
+#settings -> inline values

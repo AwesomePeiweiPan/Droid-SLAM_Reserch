@@ -24,6 +24,13 @@
             //调试时只进入编写的代码，而不进入内置函数
             "justMyCode": true,
             
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },
             
             //args可以设置命令行的参数
             //"args" : ["--imagedir=data/abandonedfactory", "--calib=calib/tartan.txt", "--stride=2", "--disable_vis"]

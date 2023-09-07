@@ -146,7 +146,9 @@ class UpdateModule(nn.Module):
 class DroidNet(nn.Module):
     def __init__(self):
         super(DroidNet, self).__init__()
+        #输出feature net: conv1, conv2, layer1, layer2, layer3, InstanceNorm2d的norm1 ...
         self.fnet = BasicEncoder(output_dim=128, norm_fn='instance')
+        #输出context net: conv1, conv2, layer1, layer2, layer3, Sequential的norm1 ...
         self.cnet = BasicEncoder(output_dim=256, norm_fn='none')
         self.update = UpdateModule()
 

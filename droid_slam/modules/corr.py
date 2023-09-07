@@ -35,7 +35,7 @@ class CorrBlock:
         for i in range(self.num_levels):
             self.corr_pyramid.append(
                 corr.view(batch*num, h1, w1, h2//2**i, w2//2**i))
-            corr = F.avg_pool2d(corr, 2, stride=2)
+            corr = F.avg_pool2d(corr, 2, stride=2) #这行代码使用 PyTorch 的 F.avg_pool2d 函数对一个二维特征图（或多个二维特征图组成的批次）进行平均池化（average pooling）
             
     def __call__(self, coords):
         out_pyramid = []
@@ -66,7 +66,7 @@ class CorrBlock:
         batch, num, dim, ht, wd = fmap1.shape
         fmap1 = fmap1.reshape(batch*num, dim, ht*wd) / 4.0
         fmap2 = fmap2.reshape(batch*num, dim, ht*wd) / 4.0
-        
+        #CorrBlock.corr() 函数不会修改输入的 fmap2。这里的主要原因是，虽然对 fmap2 进行了 .reshape() 操作，但这只是返回了一个新的张量，它与原始的 fmap2 共享存储（storage）但并不改变原始张量的内容或形状。除非你进行原地（in-place）修改（这样的操作通常会以 _ 结尾，例如 .add_() 或 .zero_()），否则原始张量不会被改变。
         corr = torch.matmul(fmap1.transpose(1,2), fmap2)
         return corr.view(batch, num, ht, wd, ht, wd)
 

@@ -21,13 +21,13 @@ class FactorGraph:
         self.ht = ht = video.ht // 8
         self.wd = wd = video.wd // 8
 
-        self.coords0 = pops.coords_grid(ht, wd, device=device)
+        self.coords0 = pops.coords_grid(ht, wd, device=device)  #由两个48x64的矩阵组成[48,64,2]维度。第一个每一行从左往右0-47，第二个每一列从上到下0-63
         self.ii = torch.as_tensor([], dtype=torch.long, device=device)
         self.jj = torch.as_tensor([], dtype=torch.long, device=device)
         self.age = torch.as_tensor([], dtype=torch.long, device=device)
 
         self.corr, self.net, self.inp = None, None, None
-        self.damping = 1e-6 * torch.ones_like(self.video.disps)
+        self.damping = 1e-6 * torch.ones_like(self.video.disps) #【512，48，64】
 
         self.target = torch.zeros([1, 0, ht, wd, 2], device=device, dtype=torch.float)
         self.weight = torch.zeros([1, 0, ht, wd, 2], device=device, dtype=torch.float)
@@ -45,12 +45,12 @@ class FactorGraph:
         """ remove duplicate edges """
 
         keep = torch.zeros(ii.shape[0], dtype=torch.bool, device=ii.device)
-        eset = set(
+        eset = set( #建立一个eset集合，里面的数据是例如{(10,13),(11,14)}这样的对应边
             [(i.item(), j.item()) for i, j in zip(self.ii, self.jj)] +
             [(i.item(), j.item()) for i, j in zip(self.ii_inac, self.jj_inac)])
 
         for k, (i, j) in enumerate(zip(ii, jj)):
-            keep[k] = (i.item(), j.item()) not in eset
+            keep[k] = (i.item(), j.item()) not in eset  #如果ii,jj新建立的边不在eset中，则它们对应的keep为true
 
         return ii[keep], jj[keep]
 
@@ -82,7 +82,7 @@ class FactorGraph:
         self.net = None
         self.inp = None
 
-    @torch.cuda.amp.autocast(enabled=True)
+    @torch.cuda.amp.autocast(enabled=True) #PyTorch 中的自动混合精度（Automatic Mixed Precision，AMP）运算
     def add_factors(self, ii, jj, remove=False):
         """ add edges to factor graph """
 
@@ -92,7 +92,7 @@ class FactorGraph:
         if not isinstance(jj, torch.Tensor):
             jj = torch.as_tensor(jj, dtype=torch.long, device=self.device)
 
-        # remove duplicate edges
+        # remove duplicate edges   去除和之前重复的边，不是去除[1,2],[2,1]这样的边
         ii, jj = self.__filter_repeated_edges(ii, jj)
 
 
@@ -106,7 +106,7 @@ class FactorGraph:
             ix = torch.arange(len(self.age))[torch.argsort(self.age).cpu()]
             self.rm_factors(ix >= self.max_factors - ii.shape[0], store=True)
 
-        net = self.video.nets[ii].to(self.device).unsqueeze(0)
+        net = self.video.nets[ii].to(self.device).unsqueeze(0) 
 
         # correlation volume for new edges
         if self.corr_impl == "volume":
@@ -114,16 +114,16 @@ class FactorGraph:
             fmap1 = self.video.fmaps[ii,0].to(self.device).unsqueeze(0)
             fmap2 = self.video.fmaps[jj,c].to(self.device).unsqueeze(0)
             corr = CorrBlock(fmap1, fmap2)
-            self.corr = corr if self.corr is None else self.corr.cat(corr)
+            self.corr = corr if self.corr is None else self.corr.cat(corr) #如果 self.corr 为空，则将其设置为新计算出的 corr。否则，将新的 corr 与旧的 self.corr 连接。
 
             inp = self.video.inps[ii].to(self.device).unsqueeze(0)
             self.inp = inp if self.inp is None else torch.cat([self.inp, inp], 1)
 
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.cuda.amp.autocast(enabled=False): # 禁用自动混合精度
             target, _ = self.video.reproject(ii, jj)
             weight = torch.zeros_like(target)
 
-        self.ii = torch.cat([self.ii, ii], 0)
+        self.ii = torch.cat([self.ii, ii], 0) #将两个张量沿着第 0 维（通常是行维度）拼接起来
         self.jj = torch.cat([self.jj, jj], 0)
         self.age = torch.cat([self.age, torch.zeros_like(ii)], 0)
 
@@ -194,15 +194,15 @@ class FactorGraph:
         self.rm_factors(m, store=False)
 
 
-    @torch.cuda.amp.autocast(enabled=True)
+    @torch.cuda.amp.autocast(enabled=True)  #不支持混合精度计算
     def update(self, t0=None, t1=None, itrs=2, use_inactive=False, EP=1e-7, motion_only=False):
         """ run update operator on factor graph """
 
         # motion features
         with torch.cuda.amp.autocast(enabled=False):
-            coords1, mask = self.video.reproject(self.ii, self.jj)
-            motn = torch.cat([coords1 - self.coords0, self.target - coords1], dim=-1)
-            motn = motn.permute(0,1,4,2,3).clamp(-64.0, 64.0)
+            coords1, mask = self.video.reproject(self.ii, self.jj) # coords1[1,22,48,64,2],mask为valid_mask,说明投影的3D点X0,X1的深度值是否大于MIN_DEPTH
+            motn = torch.cat([coords1 - self.coords0, self.target - coords1], dim=-1) #self.coords0[48,64,2]，motn[1,22,48,64,4]
+            motn = motn.permute(0,1,4,2,3).clamp(-64.0, 64.0) #重新排列维度并且限制数值在(-64,64),变成[1,22,4,48,64]
         
         # correlation features
         corr = self.corr(coords1)
@@ -214,11 +214,11 @@ class FactorGraph:
             t0 = max(1, self.ii.min().item()+1)
 
         with torch.cuda.amp.autocast(enabled=False):
-            self.target = coords1 + delta.to(dtype=torch.float)
-            self.weight = weight.to(dtype=torch.float)
+            self.target = coords1 + delta.to(dtype=torch.float) #delta[1,22,48,64,2]
+            self.weight = weight.to(dtype=torch.float) #[1,22,48,64,2]
 
             ht, wd = self.coords0.shape[0:2]
-            self.damping[torch.unique(self.ii)] = damping
+            self.damping[torch.unique(self.ii)] = damping   #self.damping[512,48,64];   damping[1,8,48,64]
 
             if use_inactive:
                 m = (self.ii_inac >= t0 - 3) & (self.jj_inac >= t0 - 3)
@@ -300,16 +300,16 @@ class FactorGraph:
             self.video.dirty[:t] = True
 
     def add_neighborhood_factors(self, t0, t1, r=3):
-        """ add edges between neighboring frames within radius r """
+        """ add edges between neighboring frames within radius r 在一系列帧（从 t0 到 t1）之间添加边，这些边连接的帧之间的时间或空间距离应在 (c, r] 范围内 """
 
-        ii, jj = torch.meshgrid(torch.arange(t0,t1), torch.arange(t0,t1))
-        ii = ii.reshape(-1).to(dtype=torch.long, device=self.device)
-        jj = jj.reshape(-1).to(dtype=torch.long, device=self.device)
+        ii, jj = torch.meshgrid(torch.arange(t0,t1), torch.arange(t0,t1)) #ii为8x8矩阵，每行分别为0-7;jj为8x8矩阵，每列分别为0-7
+        ii = ii.reshape(-1).to(dtype=torch.long, device=self.device)      #ii为64的long类型的张量，并将其移动到指定的设备
+        jj = jj.reshape(-1).to(dtype=torch.long, device=self.device)      #jj为64的long类型的张量，并将其移动到指定的设备
 
         c = 1 if self.video.stereo else 0
 
         keep = ((ii - jj).abs() > c) & ((ii - jj).abs() <= r)
-        self.add_factors(ii[keep], jj[keep])
+        self.add_factors(ii[keep], jj[keep])        #神奇！得到的ii,jj对应的数组便是对应的帧图
 
     
     def add_proximity_factors(self, t0=0, t1=0, rad=2, nms=2, beta=0.25, thresh=16.0, remove=False):
