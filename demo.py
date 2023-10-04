@@ -138,8 +138,8 @@ if __name__ == '__main__':
 
     tstamps = []
     
-    for (t, image, intrinsics) in tqdm(image_stream_stereo(args.imagedir)):
-    #for (t, image, intrinsics) in tqdm(image_stream(args.imagedir, args.calib, args.stride)):
+    #for (t, image, intrinsics) in tqdm(image_stream_stereo(args.imagedir)):
+    for (t, image, intrinsics) in tqdm(image_stream(args.imagedir, args.calib, args.stride)):
         if t < args.t0:
             continue
 
@@ -155,8 +155,8 @@ if __name__ == '__main__':
     if args.reconstruction_path is not None:
         save_reconstruction(droid, args.reconstruction_path)
 
-    #traj_est = droid.terminate(image_stream(args.imagedir, args.calib, args.stride))
-    traj_est = droid.terminate(image_stream_stereo(args.imagedir))
+    traj_est = droid.terminate(image_stream(args.imagedir, args.calib, args.stride))
+    #traj_est = droid.terminate(image_stream_stereo(args.imagedir))
 
 
 #python demo.py --imagedir=data/abandonedfactory --calib=calib/tartan.txt --stride=2 --disable_vis

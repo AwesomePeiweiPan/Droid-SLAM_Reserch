@@ -273,7 +273,7 @@
                                         ii(tensor[22]):就是之前的ii[keep] 
                                         jj(tensor[22]):就是之前的jj[keep] 
                                             *X0, Jz = iproj(depths[:,ii], intrinsics[:,ii], jacobian=jacobian)*
-                                                depths[:,ii](tensor[1,22,48,64]) = disps
+                                                depths[:,ii](tensor[1,22,48,64]) = disps 
                                                 intrinsics[:,ii](tensor[1,22,4]) = intrinsics
                                                     return Jz : None
                                                     return pts = X0:
@@ -341,7 +341,7 @@
                     - 特殊！每次循环没有变化，但是被用在了很重要的droid.frontend.graph.update_op函数中
                     droid.frontend.graph.age(tensor[22]) -> 每次循环 数值+1
                     *droid.frontend.graph.net, delta, weight, damping, upmask = droid.frontend.graph.update_op*
-                    *(droid.frontend.graph.net,droid.frontend.graph.inp,corr,motn,droid.frontend.graph.ii,droid.frontend.graph.jj)*
+                    *(droid.frontend.graph.net,droid.frontend.graph.inp,corr,motn,droid.frontend.graph.ii,droid.frontend.graph.jj) 主更新函数*
                         droid.frontend.graph.net(tensor[1,22,128,48,64]) : 来自于droid.video.nets[ii[keep]]的第[ii[keep],:,:,:]维度,满数据
                         droid.frontend.graph.inp(tensor[1,22,128,48,64]) : 来自于droid.video.inps(tensor[512,128,48,64])[ii]，且头部增一维
                         corr(tensor[1, 22, 196, 48, 64]):临时变量，来自于corr.py中的corr(coords1)函数
@@ -357,23 +357,78 @@
                             经过*droid.frontend.graph._filter_repeated_edges(ii[keep],jj[keep])*去除和之前重复的边，不是去除{1,2},{2,1}..
                         delta(tensor[1, 22, 48, 64, 2]) : 目标跟踪光流像素的变化值，就是论文中的rij,通过网络预测得到,每次循环更新
                         weight(tensor[1, 22, 48, 64, 2]) : 目标跟踪光流像素预测值的权重，每次循环更新
-                        damping(tensor[1,8,48,64]) : 阻尼系数 (damping factor), 为了Levenberg-Marquardt算法的收敛性和稳定性，每次循环更新
+                        damping(tensor[1,8,48,64])  
+                            阻尼系数 (damping factor), 为了Levenberg-Marquardt算法的收敛性和稳定性，每次循环更新，神经网络得到的结果
+``                      droid.frontend.graph(FactorGraph)`` 更新的元素
+                            droid.frontend.graph.target(tensor[1,22,48,64,2]) 
+                            -> coords1 + delta 维度(tensor[1,22,48,64,2]), dtype=torch.float
+                            -> 很关键的更新元素，实现了论文中'pij*'变量
+                            droid.frontend.graph.weight(tensor[1,0,48,64,2],全为0) -> 临时变量weight赋值给它，并且更新
+                            droid.frontend.graph.damping(tensor[512,48,64],全为1e-6) 
+                            -> 选取droid.frontend.graph.ii中不重复的元素成为droid.frontend.graph.damping第0维的index
+                            -> 再用damping(tensor[1,8,48,64])赋值给它,当然了这里不重复的元素也有8个
+                            -> 维度依然是tensor([512,48,64])
+                            droid.frontend.graph.net(tensor[1,22,128,48,64]) -> 改变数值，不改变维度
+                    *droid.frontend.graph.video.py_ba=*
+                    *(target,weight,damping,ii,jj,t0,t1,itrs=itrs,lm=1e-4,motion_only=motion_only) 核心代码*
+                        target(tensor[1,22,48,64,2]):
+                            if use_inactive,沿第一维度给droid.frontend.graph.target(tensor[1,22,48,64,2])加部分droid.frontend.graph.target_inac(tensor[1,22,48,64,2]) 
+                            否则直接是droid.frontend.graph.target(tensor[1,22,48,64,2])
+                        weight(tensor[1,0,48,64,2])
+                            if use_inactive,则沿第一维度给droid.frontend.graph.weight(tensor[1,0,48,64,2])加droid.frontend.graph.tweight_inac(tensor[1,22,48,64,2])
+                        damping(tensor[8, 48, 64]):
+                            找到ii[keep]序列中unique的数，以此为索引筛选 droid.frontend.graph.damping(tensor[512,48,64])第0维度对应的元素。最后乘0.2加上一个常数EP
+                        ii(tensor[22])
+                            if use_inactive,沿第0维度给droid.frontend.graph.ii(tensor[22])加部分droid.frontend.graph.ii_inac
+                            否则直接是droid.frontend.graph.ii(tensor[22])
+                        jj(tensor[22])
+                            if use_inactive,沿第0维度给droid.frontend.graph.jj(tensor[22])加部分droid.frontend.graph.jj_inac
+                            否则直接是droid.frontend.graph.jj(tensor[22])
+                        t0:1
+                        t1:None
+                            *poses, disps = BA(target,weight,damping,poses,disps,self.intrinsics[None],ii,jj,fixedp=t0)*
+                            *最核心BA代码,包含了公式组合和求解，循环两次*
+                                target(tensor[1,22,48,64,2]):py_ba函数的参数
+                                weight(tensor[1,0,48,64,2]):py_ba函数的参数
+                                damping(tensor[8,48,64]):py_ba函数的参数
+                                poses(tensor[1,8,7]):
+                                    t1:ii[keep]和jj[keep]的最大维度再+1,这里为8
+                                    使用droid.video.poses(tensor[512,7])创建一个lietorch.SE3对象，并且取前t1行，再增加维度
+                                disps(tensor[1, 8, 48, 64]):取droid.video.disps(tensor[512,48,64])前t1行，再增加维度
+                                intrinsics[None](tensor[1,512,4]):来自于droid.video.intrinsics(tensor[512,4])
+                                ii(tensor[22]):py_ba函数的参数
+                                jj(tensor[22]):py_ba函数的参数
+                                fixedp=t0:py_ba函数的参数
+                                    *coords, valid, (Ji, Jj, Jz) = pops.projective_transform(poses, disps, intrinsics, ii, jj, jacobian=True)*
+                                    *构建Jacobian矩阵，求解变化量*
+                                        自变量全为BA函数内传递的参数
+                                            coords(tensor[1, 22, 48, 64, 2]):
+                                                创造两个矩阵x,y，他们分别是每一列从0到63，每一行从0到47代表初始化图像的像素点坐标x,y，我称之为初始网格像素坐标，包含
+                                                将初始网格像素坐标通过相机内参转换成归一化平面坐标上的坐标，并且设置Z为1，disps视差为1，这个部分共四维，分别为X,Y,Z,W,正如论文所说，称之为归一化坐标
+                                                创造Gij，即poses[:,jj] * poses[:,ii].inv()。每次迭代由于poses更新了因此Gij都会更新
+                                                将归一化坐标通过Gij转换成新的归一化坐标，再转换到更新网格像素坐标。注意，如果是立体视觉，更新网格像素坐标的第二维应该是更新后的视差坐标除以更新后的Z
+                                                这个更新后的网格像素表格做就是coords
+                                            valid(tensor[1, 22, 48, 64, 1])
+                                                只有旧的和新的归一化坐标的第2维度，即Z都大于MIN_DEPTH,对应的值是float类型的真
+                                            Ji, Jj, Jz
+                                            
+
+                                            
+
+
+
+                                
+
+
+
+
+                        
+                        
                         
 
 
                         
 
-
-
-
-
-
-
-
-                    droid.frontend.graph.target
-                    droid.frontend.graph.weight
-                    droid.frontend.graph.damping
-                    droid.frontend.graph.net
                     
 
 

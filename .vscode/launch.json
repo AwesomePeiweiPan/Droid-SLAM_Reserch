@@ -1,41 +1,25 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    // Tutorial: https://code.visualstudio.com/docs/python/debugging#_set-configuration-options
     //在更改launch.json时，如果发现demo import 内置包出现问题，commadn + shift + P. 选择 select Python:Select Interpreter，并选择正确的解释器
-
     "version": "0.2.0",
-    "configurations": [
+    "configurations": [  
         {
-            "name": "DemoStereoVersion",
-
+            "name": "Euroc",
             "type": "python",
-
             //"attach" 将调试器附加到已经运行的进程
             "request": "launch",
-
-            // "program": "${file}",
-            "program": "/home/peiweipan/Projects/DroidSlam/demo.py",
-
-            //
+            "program": "/home/peiweipan/Projects/DroidSlam/Euroc.py",
             "console": "integratedTerminal",
-
             //调试时只进入编写的代码，而不进入内置函数
             "justMyCode": true,
-            
             //ignore function variables and special variables
             //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
             //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
             "variablePresentation": {
                 "function": "hide",
                 "special": "hide",
-            },
-            
+            },            
             //args可以设置命令行的参数
-            //"args" : ["--imagedir=data/abandonedfactory", "--calib=calib/tartan.txt", "--stride=2", "--disable_vis"]
-            "args" : ["--imagedir=datasets/TartanAir/seasidetown/P000", "--disable_vis"]
-            //"args" : ["--imagedir=datasets/TartanAir/seasidetown/P000", "--disable_vis"]
+            "args" : ["--datapath=/home/peiweipan/Projects/DroidSlam/datasets/MH01/", "--weights=droid.pth", "--disable_vis", "--stereo"]
         }
     ]
 }

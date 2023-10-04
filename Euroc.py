@@ -98,7 +98,6 @@ if __name__ == '__main__':
     parser.add_argument("--backend_thresh", type=float, default=24.0)
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=2)
-
     parser.add_argument("--upsample", action="store_true")
     args = parser.parse_args()
 
@@ -114,31 +113,3 @@ if __name__ == '__main__':
         droid.track(t, image, intrinsics=intrinsics)
 
     traj_est = droid.terminate(image_stream(args.datapath, stride=1))
-
-    ### run evaluation ###
-
-    import evo
-    from evo.core.trajectory import PoseTrajectory3D
-    from evo.tools import file_interface
-    from evo.core import sync
-    import evo.main_ape as main_ape
-    from evo.core.metrics import PoseRelation
-
-    images_list = sorted(glob.glob(os.path.join(args.datapath, 'cam0/data/*.png')))
-    tstamps = [float(x.split('/')[-1][:-4]) for x in images_list]
-
-    traj_est = PoseTrajectory3D(
-        positions_xyz=1.10 * traj_est[:,:3],
-        orientations_quat_wxyz=traj_est[:,3:],
-        timestamps=np.array(tstamps))
-
-    traj_ref = file_interface.read_tum_trajectory_file(args.gt)
-
-    traj_ref, traj_est = sync.associate_trajectories(traj_ref, traj_est)
-
-    result = main_ape.ape(traj_ref, traj_est, est_name='traj', 
-        pose_relation=PoseRelation.translation_part, align=True, correct_scale=True)
-
-    print(result)
-
-

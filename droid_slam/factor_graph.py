@@ -220,7 +220,7 @@ class FactorGraph:
             ht, wd = self.coords0.shape[0:2]
             self.damping[torch.unique(self.ii)] = damping   #self.damping[512,48,64];   damping[1,8,48,64]
 
-            if use_inactive:
+            if use_inactive:    #在initialize阶段没有任何变
                 m = (self.ii_inac >= t0 - 3) & (self.jj_inac >= t0 - 3)
                 ii = torch.cat([self.ii_inac[m], self.ii], 0)
                 jj = torch.cat([self.jj_inac[m], self.jj], 0)
@@ -234,7 +234,7 @@ class FactorGraph:
             damping = .2 * self.damping[torch.unique(ii)].contiguous() + EP
 
             if 0:
-                target = target.view(-1, ht, wd, 2).permute(0,3,1,2).contiguous()
+                target = target.view(-1, ht, wd, 2).permute(0,3,1,2).contiguous()   #contiguous 确保张量在内存中是连续的,为了提高性能或者其他操作
                 weight = weight.view(-1, ht, wd, 2).permute(0,3,1,2).contiguous()
                 # dense bundle adjustment
                 self.video.cuda_ba(target, weight, damping, ii, jj, t0, t1, 

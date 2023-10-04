@@ -31,7 +31,7 @@ def pose_retr(poses, dx, ii):
 def BA(target, weight, eta, poses, disps, intrinsics, ii, jj, fixedp=1, rig=1):
     """ Full Bundle Adjustment """
 
-    B, P, ht, wd = disps.shape
+    B, P, ht, wd = disps.shape #[1,8,48,64]
     N = ii.shape[0]
     D = poses.manifold_dim
 
