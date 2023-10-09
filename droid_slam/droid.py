@@ -78,7 +78,7 @@ class Droid:
         #需要注意的是，在这个上下文管理器内创建的任何张量都默认不需要梯度（.requires_grad 属性为 False）
         #简而言之，with torch.no_grad(): 是一种优化手段，用于在不需要梯度计算的情境下节省计算资源。
         with torch.no_grad():
-            # check there is enough motion
+            # check there is enough motion，创建droid.video的poses, disps等值
             self.filterx.track(tstamp, image, depth, intrinsics)
 
             # local bundle adjustment

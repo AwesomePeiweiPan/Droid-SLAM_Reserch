@@ -20,6 +20,25 @@
             },            
             //args可以设置命令行的参数
             "args" : ["--datapath=/home/peiweipan/Projects/DroidSlam/datasets/MH01/", "--weights=droid.pth", "--disable_vis", "--stereo"]
-        }
+        },
+        {
+            "name": "Demo",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/demo.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },            
+            //args可以设置命令行的参数
+            "args" : ["--imagedir=data/abandonedfactory", "--calib=calib/tartan.txt", "--disable_vis", "--stride=2"]
+        },
     ]
 }

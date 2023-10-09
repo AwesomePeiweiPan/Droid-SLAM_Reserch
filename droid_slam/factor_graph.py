@@ -92,7 +92,7 @@ class FactorGraph:
         if not isinstance(jj, torch.Tensor):
             jj = torch.as_tensor(jj, dtype=torch.long, device=self.device)
 
-        # remove duplicate edges   去除和之前重复的边，不是去除[1,2],[2,1]这样的边
+        # remove duplicate edges   去除和之前重复的边
         ii, jj = self.__filter_repeated_edges(ii, jj)
 
 
@@ -302,9 +302,9 @@ class FactorGraph:
     def add_neighborhood_factors(self, t0, t1, r=3):
         """ add edges between neighboring frames within radius r 在一系列帧（从 t0 到 t1）之间添加边，这些边连接的帧之间的时间或空间距离应在 (c, r] 范围内 """
 
-        ii, jj = torch.meshgrid(torch.arange(t0,t1), torch.arange(t0,t1)) #ii为8x8矩阵，每行分别为0-7;jj为8x8矩阵，每列分别为0-7
-        ii = ii.reshape(-1).to(dtype=torch.long, device=self.device)      #ii为64的long类型的张量，并将其移动到指定的设备
-        jj = jj.reshape(-1).to(dtype=torch.long, device=self.device)      #jj为64的long类型的张量，并将其移动到指定的设备
+        ii, jj = torch.meshgrid(torch.arange(t0,t1), torch.arange(t0,t1)) #ii为14x14矩阵，每行分别为0-14;jj为14x14矩阵，每列分别为0-14
+        ii = ii.reshape(-1).to(dtype=torch.long, device=self.device)      #ii为255的long类型的张量，并将其移动到指定的设备
+        jj = jj.reshape(-1).to(dtype=torch.long, device=self.device)      #jj为255的long类型的张量，并将其移动到指定的设备
 
         c = 1 if self.video.stereo else 0
 
@@ -324,9 +324,9 @@ class FactorGraph:
         jj = jj.reshape(-1)
 
         d = self.video.distance(ii, jj, beta=beta)
-        d[ii - rad < jj] = np.inf
+        d[ii - rad < jj] = np.inf   #确保在由(t0,t)组成的因子图中，一个帧与前面的rad帧之间不会有直接的连接
         d[d > 100] = np.inf
-
+        #这种方法是在尝试对每对 (i, j) 创建一个邻域，并使这些邻域内的距离值变为无穷大。
         ii1 = torch.cat([self.ii, self.ii_bad, self.ii_inac], 0)
         jj1 = torch.cat([self.jj, self.jj_bad, self.jj_inac], 0)
         for i, j in zip(ii1.cpu().numpy(), jj1.cpu().numpy()):
@@ -342,11 +342,11 @@ class FactorGraph:
 
         es = []
         for i in range(t0, t):
-            if self.video.stereo:
+            if self.video.stereo:    #连接自己，并且设置距离为无穷大
                 es.append((i, i))
                 d[(i-t0)*(t-t1) + (i-t1)] = np.inf
 
-            for j in range(max(i-rad-1,0), i):
+            for j in range(max(i-rad-1,0), i): #连接i之前的rad内的边并创建双向链接
                 es.append((i,j))
                 es.append((j,i))
                 d[(i-t0)*(t-t1) + (j-t1)] = np.inf

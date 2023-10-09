@@ -58,14 +58,16 @@ def image_stream(datapath, image_size=[320, 512], stereo=False, stride=1):
     for t, (imgL, imgR) in enumerate(zip(images_left, images_right)):
         if stereo and not os.path.isfile(imgR):
             continue
-        tstamp = float(imgL.split('/')[-1][:-4])        
+        #取最后一个/后面的数字，并且取.png前面的数字
+        tstamp = float(imgL.split('/')[-1][:-4])  
+        #重新映射图像的像素。这个函数常用于校正畸变的图像，例如鱼眼镜头拍摄的图像，并使用双线性插值处理图像      
         images = [cv2.remap(cv2.imread(imgL), map_l[0], map_l[1], interpolation=cv2.INTER_LINEAR)]
         if stereo:
             images += [cv2.remap(cv2.imread(imgR), map_r[0], map_r[1], interpolation=cv2.INTER_LINEAR)]
         
-        images = torch.from_numpy(np.stack(images, 0))
+        images = torch.from_numpy(np.stack(images, 0))   #把images按照第0维度叠加，变成[2,480,752,3]
         images = images.permute(0, 3, 1, 2).to("cuda:0", dtype=torch.float32)
-        images = F.interpolate(images, image_size, mode="bilinear", align_corners=False)
+        images = F.interpolate(images, image_size, mode="bilinear", align_corners=False) #双线性插值改变图片的大小到image_size
         
         intrinsics = torch.as_tensor(intrinsics_vec).cuda()
         intrinsics[0] *= image_size[1] / wd0
@@ -101,13 +103,11 @@ if __name__ == '__main__':
     parser.add_argument("--upsample", action="store_true")
     args = parser.parse_args()
 
+    #设置多进程启动方法，相比于默认的fork启动，不从父进程的某个状态开始，而启动一个新的解释器进程并从头开始运行程序
+    #涉及GPU和CUDA编程的时候更加稳定
     torch.multiprocessing.set_start_method('spawn')
 
-    print("Running evaluation on {}".format(args.datapath))
-    print(args)
-
     droid = Droid(args)
-    time.sleep(5)
 
     for (t, image, intrinsics) in tqdm(image_stream(args.datapath, stereo=args.stereo, stride=1)):
         droid.track(t, image, intrinsics=intrinsics)

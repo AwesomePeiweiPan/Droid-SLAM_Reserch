@@ -216,5 +216,4 @@ class DepthVideo:
                 poses, disps = BA(target, weight, eta, poses, disps, self.intrinsics[None], ii, jj, fixedp=t0)
             self.poses[:t1] = poses.data[0]
             self.disps[:t1] = disps[0]
-
             self.disps.clamp_(min=0.001)

@@ -114,11 +114,11 @@ def projective_transform(poses, depths, intrinsics, ii, jj, jacobian=False, retu
 
     if jacobian:
         # Ji transforms according to dual adjoint
-        Jj = torch.matmul(Jp, Ja)
-        Ji = -Gij[:,:,None,None,None].adjT(Jj)
+        Jj = torch.matmul(Jp, Ja)               #p'对 了j 求导
+        Ji = -Gij[:,:,None,None,None].adjT(Jj)  #p'对 了i 求导
 
-        Jz = Gij[:,:,None,None] * Jz
-        Jz = torch.matmul(Jp, Jz.unsqueeze(-1))
+        Jz = Gij[:,:,None,None] * Jz            #
+        Jz = torch.matmul(Jp, Jz.unsqueeze(-1)) #p'对 d 求导
 
         return x1, valid, (Ji, Jj, Jz)
 

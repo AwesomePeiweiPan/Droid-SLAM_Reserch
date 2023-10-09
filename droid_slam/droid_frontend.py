@@ -79,12 +79,14 @@ class DroidFrontend:
 
         self.t0 = 0
         self.t1 = self.video.counter.value
-
+        
+        #创建深度学习网络，通过图片序号创建邻接矩阵
         self.graph.add_neighborhood_factors(self.t0, self.t1, r=3)  #graph的ii,jj,target[1,22,48,64,2]还有神经网络赋值
 
+        #使用BA更新droid.video.poses和droid.video.disps
         for itr in range(8):
             self.graph.update(1, use_inactive=True)
-
+        
         self.graph.add_proximity_factors(0, 0, rad=2, nms=2, thresh=self.frontend_thresh, remove=False)
 
         for itr in range(8):
