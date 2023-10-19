@@ -568,7 +568,7 @@
                     droid.frontend.graph.target(tensor[1,22,40,64,2]) <- droid.frontend.graph.target(tensor[1,93,40,64,2])
                     droid.frontend.graph.weight(tensor[1,22,40,64,2]) <- droid.frontend.graph.weight(tensor[1,22,40,64,2])
 **初始化结束**
-**更新阶段**
+**更新阶段 t==32**
     *droid.filterx.track(new image)*
     根据new image更新网络: 移动距离与droid.filterx.thresh=2.4相比,判定图像是否符合作为关键帧的条件，
         *delta=droid.filterx.update(droid.filterx.net, droid.filterx.inp, corr)*
@@ -691,7 +691,6 @@
                 将t1-1时刻的 poses clone给 droid.video.poses[t1]
                 将t1-1时刻的 disps 的平均值 clone给 droid.video.disps[t1]
             droid.frontend.video.dirty[self.graph.ii.min():self.t1] -> true
-
 
 
 

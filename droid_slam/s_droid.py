@@ -2,21 +2,23 @@ import torch
 import lietorch
 import numpy as np
 
+import os
+
 from droid_net import DroidNet
 from depth_video import DepthVideo
-from motion_filter import MotionFilter
-from droid_frontend import DroidFrontend
-from droid_backend import DroidBackend 
+from s_motion_filter import S_MotionFilter
+from s_droid_frontend import S_DroidFrontend
+from s_droid_backend import S_DroidBackend
 from trajectory_filler import PoseTrajectoryFiller
 
 from collections import OrderedDict
 from torch.multiprocessing import Process
 
 
-class Droid:
+class SDroid:
     def __init__(self, args):
         #Droid类继承Object父类
-        super(Droid, self).__init__()
+        super(SDroid, self).__init__()
         
         #形成一个net对象，拥有cnet对象, fnet对象, update对象
         self.load_weights(args.weights)
@@ -27,20 +29,15 @@ class Droid:
         self.video = DepthVideo(args.image_size, args.buffer, stereo=args.stereo)
 
         # filter incoming frames so that there is enough motion
-        self.filterx = MotionFilter(self.net, self.video, thresh=args.filter_thresh)
+        self.filterx = S_MotionFilter(self.net, self.video, thresh=args.filter_thresh)
 
         # frontend process
-        self.frontend = DroidFrontend(self.net, self.video, self.args)
+        self.frontend = S_DroidFrontend(self.net, self.video, self.args)
         
         # backend process
-        self.backend = DroidBackend(self.net, self.video, self.args)
+        self.backend = S_DroidBackend(self.net, self.video, self.args)
 
-        # visualizer
-        if not self.disable_vis:
-            from visualization import droid_visualization
-            self.visualizer = Process(target=droid_visualization, args=(self.video,))
-            self.visualizer.start()
-   
+        
 
         # post processor - fill in poses for non-keyframes
         self.traj_filler = PoseTrajectoryFiller(self.net, self.video)
@@ -48,8 +45,6 @@ class Droid:
 
     def load_weights(self, weights):
         """ load trained model weights """
-        #在控制台输出 droid.pth 字样
-        print(weights)
         #形成net，包含BasicEncoder类的cnet, fnet;UpdateModule类的update
         self.net = DroidNet()
         #.items(): 对加载的权重（一个字典）调用 items() 函数，以得到一个由 (key, value) 对组成的迭代器。在这里，key 是权重张量的名称，value 是权重张量本身。
@@ -88,35 +83,7 @@ class Droid:
             # global bundle adjustment
             # self.backend()
 
-    def save_reconstruction(self, reconstruction_path):
-
-        from pathlib import Path
-        import random
-        import string
-
-        t = self.video.counter.value
-        tstamps = self.video.tstamp[:t].cpu().numpy()
-        images = self.video.images[:t].cpu().numpy()
-        disps = self.video.disps[:t].cpu().numpy()
-        poses = self.video.poses[:t].cpu().numpy()
-        intrinsics = self.video.intrinsics[:t].cpu().numpy()
-        fmaps = self.video.fmaps[:t].cpu().numpy()
-        inps = self.video.inps[:t].cpu().numpy()
-        nets = self.video.nets[:t].cpu().numpy()
-
-
-        Path("reconstructions/{}".format(reconstruction_path)).mkdir(parents=True, exist_ok=True)
-        np.save("reconstructions/{}/tstamps.npy".format(reconstruction_path), tstamps)
-        np.save("reconstructions/{}/images.npy".format(reconstruction_path), images)
-        np.save("reconstructions/{}/disps.npy".format(reconstruction_path), disps)
-        np.save("reconstructions/{}/poses.npy".format(reconstruction_path), poses)
-        np.save("reconstructions/{}/intrinsics.npy".format(reconstruction_path), intrinsics)
-        np.save("reconstructions/{}/fmaps.npy".format(reconstruction_path), fmaps)
-        np.save("reconstructions/{}/inps.npy".format(reconstruction_path), inps)
-        np.save("reconstructions/{}/nets.npy".format(reconstruction_path), nets)
-
-
-    def terminate(self, reconstruction_path, stream=None):
+    def terminate(self):
         """ terminate the visualization process, return poses [t, q] """
 
         del self.frontend
@@ -128,9 +95,11 @@ class Droid:
         torch.cuda.empty_cache()
         print("#" * 32)
         self.backend(12)
+        
+        #camera_trajectory = self.traj_filler(stream)
+        #return camera_trajectory.data.cpu()
+        #return camera_trajectory.inv().data.cpu().numpy()
 
-        self.save_reconstruction(reconstruction_path)
-
-        camera_trajectory = self.traj_filler(stream)
-        return camera_trajectory.inv().data.cpu().numpy()
+    def dirtyChange(self, t):
+        self.video.dirty[:t] = True
 

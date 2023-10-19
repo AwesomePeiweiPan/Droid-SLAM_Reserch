@@ -16,6 +16,10 @@ from droid import Droid
 
 import torch.nn.functional as F
 
+import os
+
+import loop_detect 
+
 
 
 def show_image(image):
@@ -101,6 +105,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=2)
     parser.add_argument("--upsample", action="store_true")
+    parser.add_argument("--reconstruction_path", help="path to saved reconstruction")
     args = parser.parse_args()
 
     #设置多进程启动方法，相比于默认的fork启动，不从父进程的某个状态开始，而启动一个新的解释器进程并从头开始运行程序
@@ -111,5 +116,15 @@ if __name__ == '__main__':
 
     for (t, image, intrinsics) in tqdm(image_stream(args.datapath, stereo=args.stereo, stride=1)):
         droid.track(t, image, intrinsics=intrinsics)
+    
+    #提取关键帧对应的图片到一个文件夹中
+    if 0:
+        src_path = '/home/peiweipan/Projects/DroidSlam/datasets/MH02/cam1/data/'
+        dst_path = '/home/peiweipan/fbow/Euroc_MH/KeyFrames/MH02_cam1/'
+        loop_detect.extract_images_by_timestamp(src_path,dst_path,droid.video.tstamp)
+        
+    traj_est = droid.terminate(args.reconstruction_path, image_stream(args.datapath, stride=1))
+    
+    
 
-    traj_est = droid.terminate(image_stream(args.datapath, stride=1))
+    print("Finish")

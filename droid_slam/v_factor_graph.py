@@ -8,7 +8,7 @@ from modules.corr import CorrBlock, AltCorrBlock
 import geom.projective_ops as pops
 
 
-class FactorGraph:
+class V_FactorGraph:
     def __init__(self, video, update_op, device="cuda:0", corr_impl="volume", max_factors=-1, upsample=False):
         self.video = video
         self.update_op = update_op
