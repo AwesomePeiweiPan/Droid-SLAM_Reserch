@@ -55,40 +55,41 @@ def create_point_actor(points, colors):
     point_cloud.colors = o3d.utility.Vector3dVector(colors)
     return point_cloud
 
-def droid_visualization(video, device="cuda:0"):
+def S_droid_visualization(video, device="cuda:0"):
     torch.cuda.set_device(device)
-    droid_visualization.video = video
-    droid_visualization.cameras = {}
-    droid_visualization.points = {}
-    droid_visualization.warmup = 0
-    droid_visualization.scale = 1.0
-    droid_visualization.ix = 0
+    S_droid_visualization.video = video
+    S_droid_visualization.cameras = {}
+    S_droid_visualization.points = {}
+    S_droid_visualization.warmup = 8
+    S_droid_visualization.scale = 1.0
+    S_droid_visualization.ix = 0
 
-    droid_visualization.filter_thresh = 0.005
+    S_droid_visualization.filter_thresh = 0.005
 
     def increase_filter(vis):
-        droid_visualization.filter_thresh *= 2
-        droid_visualization.video.dirty[:droid_visualization.video.counter.value] = True
+        S_droid_visualization.filter_thresh *= 2
+        with S_droid_visualization.video.get_lock():
+            S_droid_visualization.video.dirty[:S_droid_visualization.video.counter.value] = True
 
     def decrease_filter(vis):
-        droid_visualization.filter_thresh *= 0.5
-        droid_visualization.video.dirty[:droid_visualization.video.counter.value] = True
+        S_droid_visualization.filter_thresh *= 0.5
+        with S_droid_visualization.video.get_lock():
+            S_droid_visualization.video.dirty[:S_droid_visualization.video.counter.value] = True
     
     #一个回调函数，它在每一帧中都被调用，用于更新3D视图中的内容。
     def animation_callback(vis):
-        print("callback")
-        
         cam = vis.get_view_control().convert_to_pinhole_camera_parameters()
 
         with torch.no_grad():
 
             with video.get_lock():
+                t = video.counter.value 
                 dirty_index, = torch.where(video.dirty.clone())
                 dirty_index = dirty_index
 
             if len(dirty_index) == 0:
                 return
-        
+
             video.dirty[dirty_index] = False
 
             # convert poses to 4x4 matrix
@@ -100,7 +101,7 @@ def droid_visualization(video, device="cuda:0"):
             images = images.cpu()[:,[2,1,0],3::8,3::8].permute(0,2,3,1) / 255.0
             points = droid_backends.iproj(SE3(poses).inv().data, disps, video.intrinsics[0]).cpu()      
 
-            thresh = droid_visualization.filter_thresh * torch.ones_like(disps.mean(dim=[1,2]))
+            thresh = S_droid_visualization.filter_thresh * torch.ones_like(disps.mean(dim=[1,2]))
 
             count = droid_backends.depth_filter(
                 video.poses, video.disps, video.intrinsics[0], dirty_index, thresh)
@@ -113,33 +114,34 @@ def droid_visualization(video, device="cuda:0"):
                 pose = Ps[i]
                 ix = dirty_index[i].item()
 
-                if ix in droid_visualization.cameras:
-                    vis.remove_geometry(droid_visualization.cameras[ix])
-                    del droid_visualization.cameras[ix]
+                if ix in S_droid_visualization.cameras:
+                    vis.remove_geometry(S_droid_visualization.cameras[ix])
+                    del S_droid_visualization.cameras[ix]
 
-                if ix in droid_visualization.points:
-                    vis.remove_geometry(droid_visualization.points[ix])
-                    del droid_visualization.points[ix]
+                if ix in S_droid_visualization.points:
+                    vis.remove_geometry(S_droid_visualization.points[ix])
+                    del S_droid_visualization.points[ix]
                 
                     ### add camera actor ###
                     cam_actor = create_camera_actor(True)
                     cam_actor.transform(pose)
                     vis.add_geometry(cam_actor)
-                    droid_visualization.cameras[ix] = cam_actor
+                    S_droid_visualization.cameras[ix] = cam_actor
 
                     mask = masks[i].reshape(-1)
                     pts = points[i].reshape(-1, 3)[mask].cpu().numpy()
                     clr = images[i].reshape(-1, 3)[mask].cpu().numpy()
 
+                    print("callback")
                     ## add point actor ###
                     point_actor = create_point_actor(pts, clr)
                     vis.add_geometry(point_actor)
-                    droid_visualization.points[ix] = point_actor
+                    S_droid_visualization.points[ix] = point_actor
             
-                if len(droid_visualization.cameras) >= droid_visualization.warmup:
+                if len(S_droid_visualization.cameras) >= S_droid_visualization.warmup:
                     cam = vis.get_view_control().convert_from_pinhole_camera_parameters(cam)
 
-                droid_visualization.ix += 1
+                S_droid_visualization.ix += 1
                 vis.poll_events()
                 vis.update_renderer()
 

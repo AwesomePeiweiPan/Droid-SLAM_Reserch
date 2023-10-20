@@ -13,7 +13,6 @@ import open3d as o3d
 from lietorch import SE3
 import loop_detect 
 from s_droid import SDroid
-from s_visualization import droid_visualization
 import time
 
 
@@ -67,10 +66,6 @@ if __name__ == "__main__":
     end_value = MH_Mul['poses'].shape[0]
     # 初始设置
     droid_MH.video.counter.value = 0
-
-
-    visualizer = Process(target=droid_visualization, args=(droid_MH.video,))
-    visualizer.start()
 
 
     # 循环

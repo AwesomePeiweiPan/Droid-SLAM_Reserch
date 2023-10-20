@@ -14,6 +14,8 @@ from trajectory_filler import PoseTrajectoryFiller
 from collections import OrderedDict
 from torch.multiprocessing import Process
 
+from visualization import droid_visualization
+
 
 class SDroid:
     def __init__(self, args):
@@ -37,10 +39,12 @@ class SDroid:
         # backend process
         self.backend = S_DroidBackend(self.net, self.video, self.args)
 
-        
-
         # post processor - fill in poses for non-keyframes
         self.traj_filler = PoseTrajectoryFiller(self.net, self.video)
+
+        self.visualizer = Process(target=droid_visualization, args=(self.video,))
+        self.visualizer.start()
+
 
 
     def load_weights(self, weights):

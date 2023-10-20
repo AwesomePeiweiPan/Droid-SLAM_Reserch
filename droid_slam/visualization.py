@@ -37,13 +37,14 @@ def white_balance(img):
     return result
 
 #该函数用于创建一个3D相机模型，可以在3D环境中表示相机的位置和方向
-def create_camera_actor(g, scale=0.2):
+def create_camera_actor(g, scale=0.05):
     """ build open3d camera polydata """
     camera_actor = o3d.geometry.LineSet(
         points=o3d.utility.Vector3dVector(scale * CAM_POINTS),
         lines=o3d.utility.Vector2iVector(CAM_LINES))
 
-    color = (g * 1.0, 0.5 * (1-g), 0.9 * (1-g))
+    color = (0.678, 0.847, 0.902)
+    #color = (g * 1.0, 0.5 * (1-g), 0.9 * (1-g))
     camera_actor.paint_uniform_color(color)
     return camera_actor
 
