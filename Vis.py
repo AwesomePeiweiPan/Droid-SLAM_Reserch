@@ -65,8 +65,8 @@ if __name__ == "__main__":
     # 假设 MH_Mul['poses'] 已经存在并且我们知道它的形状
     end_value = MH_Mul['poses'].shape[0]
     # 初始设置
-    droid_MH.video.counter.value = 0
-
+    droid_MH.video.counter.value = 0                
+    droid_MH.video.imageSeries[280:600] = 1
 
     # 循环
     for i in range(end_value):
@@ -75,9 +75,5 @@ if __name__ == "__main__":
         droid_MH.video.counter.value += 1
         time.sleep(0.5)
         
-
-
-
-
 
     print("Finished")

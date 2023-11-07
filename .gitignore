@@ -157,5 +157,9 @@ data
 figures/*.pdf
 
 reconstructions
+Notes/*
+EurocData/*
+
+
 
 

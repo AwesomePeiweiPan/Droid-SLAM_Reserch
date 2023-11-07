@@ -1,7 +1,36 @@
 {
     //在更改launch.json时，如果发现demo import 内置包出现问题，commadn + shift + P. 选择 select Python:Select Interpreter，并选择正确的解释器
     "version": "0.2.0",
-    "configurations": [  
+    "configurations": [
+        {
+            "name": "Euroc_KeyFrameAndRawData",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/Euroc_Multisession_Stereo/KeyFramesAndRawData.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },
+            "args" : ["--weights=droid.pth"]            
+        },
+        
+
+
+
+
+
+
+
+
+
+
         {
             "name": "EurocMH01",
             "type": "python",
@@ -20,6 +49,25 @@
             },            
             //args可以设置命令行的参数
             "args" : ["--datapath=/home/peiweipan/Projects/DroidSlam/datasets/MH01/", "--weights=droid.pth", "--disable_vis", "--stereo","--reconstruction_path=MH01_SaveData"]
+        },
+        {
+            "name": "Monocular EurocMH01",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/multisession/Euroc.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },            
+            //args可以设置命令行的参数
+            "args" : ["--datapath=/home/peiweipan/Projects/DroidSlam/datasets/MH01/", "--weights=droid.pth", "--disable_vis", "--reconstruction_path=MH01_SaveData"]
         },
         {
             "name": "EurocMH02",
@@ -58,6 +106,25 @@
             },            
             //args可以设置命令行的参数
             "args" : ["--datapath=/home/peiweipan/Projects/DroidSlam/datasets/S_MH01/", "--weights=droid.pth", "--disable_vis", "--stereo","--reconstruction_path=MapMatchData"]
+        },
+        {
+            "name": "Monocular Fast Euroc for Small Datasets",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/multisession/Euroc.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },            
+            //args可以设置命令行的参数
+            "args" : ["--datapath=/home/peiweipan/Projects/DroidSlam/datasets/S_MH01/", "--weights=droid.pth", "--disable_vis", "--reconstruction_path=MapMatchData"]
         },
         {
             "name": "Demo",

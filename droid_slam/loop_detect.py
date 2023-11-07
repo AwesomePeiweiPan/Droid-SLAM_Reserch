@@ -12,6 +12,70 @@ import torch.nn.functional as F
 import re
 import lietorch
 
+#清空文件夹
+def clear_directory(path):
+    if os.path.exists(path):
+        for file in os.listdir(path):
+            file_path = os.path.join(path, file)
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+
+#Euroc 数据文件读取
+def Euroc_image_stream(datapath, image_size=[320, 512], stereo=False, stride=1):
+    """ image generator """
+
+    K_l = np.array([458.654, 0.0, 367.215, 0.0, 457.296, 248.375, 0.0, 0.0, 1.0]).reshape(3,3)
+    d_l = np.array([-0.28340811, 0.07395907, 0.00019359, 1.76187114e-05, 0.0])
+    R_l = np.array([
+         0.999966347530033, -0.001422739138722922, 0.008079580483432283, 
+         0.001365741834644127, 0.9999741760894847, 0.007055629199258132, 
+        -0.008089410156878961, -0.007044357138835809, 0.9999424675829176
+    ]).reshape(3,3)
+    
+    P_l = np.array([435.2046959714599, 0, 367.4517211914062, 0,  0, 435.2046959714599, 252.2008514404297, 0,  0, 0, 1, 0]).reshape(3,4)
+    map_l = cv2.initUndistortRectifyMap(K_l, d_l, R_l, P_l[:3,:3], (752, 480), cv2.CV_32F)
+    
+    K_r = np.array([457.587, 0.0, 379.999, 0.0, 456.134, 255.238, 0.0, 0.0, 1]).reshape(3,3)
+    d_r = np.array([-0.28368365, 0.07451284, -0.00010473, -3.555907e-05, 0.0]).reshape(5)
+    R_r = np.array([
+         0.9999633526194376, -0.003625811871560086, 0.007755443660172947, 
+         0.003680398547259526, 0.9999684752771629, -0.007035845251224894, 
+        -0.007729688520722713, 0.007064130529506649, 0.999945173484644
+    ]).reshape(3,3)
+    
+    P_r = np.array([435.2046959714599, 0, 367.4517211914062, -47.90639384423901, 0, 435.2046959714599, 252.2008514404297, 0, 0, 0, 1, 0]).reshape(3,4)
+    map_r = cv2.initUndistortRectifyMap(K_r, d_r, R_r, P_r[:3,:3], (752, 480), cv2.CV_32F)
+
+    intrinsics_vec = [435.2046959714599, 435.2046959714599, 367.4517211914062, 252.2008514404297]
+    ht0, wd0 = [480, 752]
+
+    # read all png images in folder
+    images_left = sorted(glob.glob(os.path.join(datapath, '*.png')))[::stride]
+    images_right = [x.replace('cam0', 'cam1') for x in images_left]
+
+    for t, (imgL, imgR) in enumerate(zip(images_left, images_right)):
+        if stereo and not os.path.isfile(imgR):
+            continue
+        #取最后一个/后面的数字，并且取.png前面的数字
+        tstamp = float(imgL.split('/')[-1][:-4])  
+        #重新映射图像的像素。这个函数常用于校正畸变的图像，例如鱼眼镜头拍摄的图像，并使用双线性插值处理图像      
+        images = [cv2.remap(cv2.imread(imgL), map_l[0], map_l[1], interpolation=cv2.INTER_LINEAR)]
+        if stereo:
+            images += [cv2.remap(cv2.imread(imgR), map_r[0], map_r[1], interpolation=cv2.INTER_LINEAR)]
+        
+        images = torch.from_numpy(np.stack(images, 0))   #把images按照第0维度叠加，变成[2,480,752,3]
+        images = images.permute(0, 3, 1, 2).to("cuda:0", dtype=torch.float32)
+        images = F.interpolate(images, image_size, mode="bilinear", align_corners=False) #双线性插值改变图片的大小到image_size
+        
+        intrinsics = torch.as_tensor(intrinsics_vec).cuda()
+        intrinsics[0] *= image_size[1] / wd0
+        intrinsics[1] *= image_size[0] / ht0
+        intrinsics[2] *= image_size[1] / wd0
+        intrinsics[3] *= image_size[0] / ht0
+
+        yield stride*t, images, intrinsics
 
 #用于提取关键帧图像到指定的文件夹中
 def extract_images_by_timestamp(src_folder: str, dst_folder: str, tstamp: torch.Tensor):
@@ -39,7 +103,7 @@ def extract_images_by_timestamp(src_folder: str, dst_folder: str, tstamp: torch.
         dst_path = os.path.join(dst_folder, sorted_files[idx])
         shutil.copy2(src_path, dst_path)
 
-#传统的文件读取函数
+#传统的文件读取函数，但是文件名有改动
 def image_stream(datapath, image_size=[320, 512], stereo=False, stride=1):
     
     """ image generator """

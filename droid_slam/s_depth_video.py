@@ -9,7 +9,7 @@ from collections import OrderedDict
 from droid_net import cvx_upsample
 import geom.projective_ops as pops
 
-class DepthVideo:
+class S_DepthVideo:
     def __init__(self, image_size=[480, 640], buffer=1024, stereo=False, device="cuda:0"):  #buffer为数据缓存
                 
         ###current keyframe count
@@ -149,7 +149,7 @@ class DepthVideo:
 
     def reproject(self, ii, jj):
         """ project points from ii -> jj """
-        ii, jj = DepthVideo.format_indicies(ii, jj)
+        ii, jj = S_DepthVideo.format_indicies(ii, jj)
         Gs = lietorch.SE3(self.poses[None]) #[1,512,7]
 
         coords, valid_mask = \
@@ -166,7 +166,7 @@ class DepthVideo:
             N = self.counter.value
             ii, jj = torch.meshgrid(torch.arange(N), torch.arange(N))
         
-        ii, jj = DepthVideo.format_indicies(ii, jj)
+        ii, jj = S_DepthVideo.format_indicies(ii, jj)
 
         if bidirectional:
 

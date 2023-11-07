@@ -123,8 +123,8 @@ if __name__ == '__main__':
         dst_path = '/home/peiweipan/fbow/Euroc_MH/KeyFrames/MH02_cam1/'
         loop_detect.extract_images_by_timestamp(src_path,dst_path,droid.video.tstamp)
         
-    traj_est = droid.terminate(args.reconstruction_path, image_stream(args.datapath, stride=1))
-    
+    #traj_est = droid.terminate(args.reconstruction_path, image_stream(args.datapath, stride=1))
+    traj_est = droid.terminate(image_stream(args.datapath, stride=1))
     
 
     print("Finish")

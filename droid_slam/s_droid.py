@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 from droid_net import DroidNet
-from depth_video import DepthVideo
+from s_depth_video import S_DepthVideo
 from s_motion_filter import S_MotionFilter
 from s_droid_frontend import S_DroidFrontend
 from s_droid_backend import S_DroidBackend
@@ -14,7 +14,7 @@ from trajectory_filler import PoseTrajectoryFiller
 from collections import OrderedDict
 from torch.multiprocessing import Process
 
-from visualization import droid_visualization
+from s_visualization import Sdroid_visualization
 
 
 class SDroid:
@@ -28,7 +28,7 @@ class SDroid:
         self.disable_vis = args.disable_vis
 
         # store images, depth, poses, intrinsics (shared between processes)
-        self.video = DepthVideo(args.image_size, args.buffer, stereo=args.stereo)
+        self.video = S_DepthVideo(args.image_size, args.buffer, stereo=args.stereo)
 
         # filter incoming frames so that there is enough motion
         self.filterx = S_MotionFilter(self.net, self.video, thresh=args.filter_thresh)
@@ -42,8 +42,10 @@ class SDroid:
         # post processor - fill in poses for non-keyframes
         self.traj_filler = PoseTrajectoryFiller(self.net, self.video)
 
-        self.visualizer = Process(target=droid_visualization, args=(self.video,))
+        self.visualizer = Process(target=Sdroid_visualization, args=(self.video,))
         self.visualizer.start()
+
+        
 
 
 
@@ -103,7 +105,4 @@ class SDroid:
         #camera_trajectory = self.traj_filler(stream)
         #return camera_trajectory.data.cpu()
         #return camera_trajectory.inv().data.cpu().numpy()
-
-    def dirtyChange(self, t):
-        self.video.dirty[:t] = True
 

@@ -1,2 +1,0 @@
-问题，为什么使用s_visualization中的S_droid_visualization可视化无法成功
-但是使用visualization中的droid_visualization可视化可以成功？离了个大谱
