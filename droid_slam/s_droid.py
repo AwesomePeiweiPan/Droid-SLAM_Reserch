@@ -42,8 +42,9 @@ class SDroid:
         # post processor - fill in poses for non-keyframes
         self.traj_filler = PoseTrajectoryFiller(self.net, self.video)
 
-        self.visualizer = Process(target=Sdroid_visualization, args=(self.video,))
-        self.visualizer.start()
+        if not self.disable_vis:
+            self.visualizer = Process(target=Sdroid_visualization, args=(self.video,))
+            self.visualizer.start()
 
         
 

@@ -11,6 +11,7 @@ import glob
 import torch.nn.functional as F
 import re
 import lietorch
+from pathlib import Path
 
 #清空文件夹
 def clear_directory(path):
@@ -205,6 +206,22 @@ def load_reconstruction_MH(reconstruction_path):
 
     return data
 
+def load_reconstruction(reconstruction_path):
+    data = {}
+
+    # Load each numpy array from the saved path
+    data['tstamps'] = np.load(os.path.join(reconstruction_path, 'tstamps.npy'))
+    data['images'] = np.load(os.path.join(reconstruction_path, 'images.npy'))
+    data['disps'] = np.load(os.path.join(reconstruction_path, 'disps.npy'))
+    data['poses'] = np.load(os.path.join(reconstruction_path, 'poses.npy'))
+    data['intrinsics'] = np.load(os.path.join(reconstruction_path, 'intrinsics.npy'))
+    data['fmaps'] = np.load(os.path.join(reconstruction_path, 'fmaps.npy'))
+    data['inps'] = np.load(os.path.join(reconstruction_path, 'inps.npy'))
+    data['nets'] = np.load(os.path.join(reconstruction_path, 'nets.npy'))
+
+    return data
+
+
 #通过MH保存的数据给对象赋值
 def Give_Data(droid_MH, MH_Keyframes):
     droid_MH.video.tstamp[:MH_Keyframes['tstamps'].shape[0]] = torch.from_numpy(MH_Keyframes['tstamps'])
@@ -219,20 +236,19 @@ def Give_Data(droid_MH, MH_Keyframes):
 #给出图像路径
 def get_cam0_subdirectories(base_path):
     cam0_dirs = []  # List to store directories with "cam0" in them
-    
+
     # Walk through each directory
     for root, dirs, files in os.walk(base_path):
         # If there are no subdirectories in the current root
         if not dirs and 'cam0' in root:
             cam0_dirs.append(root)
-            
+
     # Custom sorting function
     def sort_key(path):
-        # Extract the last directory name
-        folder_name = os.path.basename(path)
-        # Extract digits and convert to integer
-        return int(''.join(filter(str.isdigit, folder_name)))
-    
+        # Extract all digits from the path and convert to integer
+        numbers = [int(n) for n in filter(str.isdigit, os.path.normpath(path).replace(os.path.sep, ''))]
+        return numbers
+
     cam0_dirs.sort(key=sort_key)
     return cam0_dirs
 
@@ -276,7 +292,7 @@ def printTransformMatrix(W2ToW1):
     print("Mean Transformation Matrix")
     print(column_means)
 
-#给整个第二个地图新的坐标
+#通过存储的中间文件给整个第二个地图新的坐标
 def getTransformedPoses(reconstruction_path_T, reconstruction_path_Poses):
     Data = {}
     Data['Transformation'] = np.load(f"reconstructions/{reconstruction_path_T}/T_MH01_MH02.npy")
@@ -290,6 +306,22 @@ def getTransformedPoses(reconstruction_path_T, reconstruction_path_Poses):
     T_l=lietorch.SE3(T_tensor)
     MH_poses = lietorch.SE3(poses)
     return torch.tensor((T_l[sequence].inv()*(MH_poses[sequence])).data.cpu().numpy())
+
+#直接转换第二个地图新的坐标
+def getTransformedPoses(T, second_coor):
+    Data = {}
+    Data['poses'] = np.load(os.path.join(second_coor, 'poses.npy'))
+    poses = torch.from_numpy(Data['poses'])
+
+    length = len(Data['poses'])
+    sequence = list(range(length))
+    T_tensor = T.repeat(length, 1)
+    T_l=lietorch.SE3(T_tensor)
+    MH_poses = lietorch.SE3(poses)
+    new_pose = torch.tensor((T_l[sequence].inv()*(MH_poses[sequence])).data.cpu().numpy())
+    return new_pose
+
+
 
 def save_reconstruction_for_Vis(droid, reconstruction_path):
 
@@ -307,16 +339,60 @@ def save_reconstruction_for_Vis(droid, reconstruction_path):
     np.save("reconstructions/{}/poses.npy".format(reconstruction_path), poses)
     np.save("reconstructions/{}/intrinsics.npy".format(reconstruction_path), intrinsics)
 
+def Give_Data_To_Var(MH01, MH02, MH01_Path, MH02_Path):
+    MH01['tstamps'] = np.load(os.path.join(MH01_Path, 'tstamps.npy'))
+    MH01['images'] = np.load(os.path.join(MH01_Path, 'images.npy'))
+    MH01['disps'] = np.load(os.path.join(MH01_Path, 'disps.npy'))
+    MH01['poses'] = np.load(os.path.join(MH01_Path, 'poses.npy'))
+    MH01['fmaps'] = np.load(os.path.join(MH01_Path, 'fmaps.npy'))
+    MH01['inps'] = np.load(os.path.join(MH01_Path, 'inps.npy'))
+    MH01['nets'] = np.load(os.path.join(MH01_Path, 'nets.npy'))
+    MH01['intrinsics'] = np.load(os.path.join(MH01_Path, 'intrinsics.npy'))
+
+    MH02['tstamps'] = np.load(os.path.join(MH02_Path, 'tstamps.npy'))
+    MH02['images'] = np.load(os.path.join(MH02_Path, 'images.npy'))
+    MH02['disps'] = np.load(os.path.join(MH02_Path, 'disps.npy'))
+    MH02['poses'] = np.load(os.path.join(MH02_Path, 'newPosBeforeBackend.npy'))
+    MH02['fmaps'] = np.load(os.path.join(MH02_Path, 'fmaps.npy'))
+    MH02['inps'] = np.load(os.path.join(MH02_Path, 'inps.npy'))
+    MH02['nets'] = np.load(os.path.join(MH02_Path, 'nets.npy'))
+    MH02['intrinsics'] = np.load(os.path.join(MH02_Path, 'intrinsics.npy'))
 
 
+def copy_to_transformed_file(new_folder_path, source_folder, selected_files):
+    # 转换为 Path 对象
+    new_folder_path = Path(new_folder_path)
+    source_folder = Path(source_folder)
+
+    # 创建与 kd_folder2 相同名称的子文件夹
+    target_folder = new_folder_path / source_folder.name
+    target_folder.mkdir(parents=True, exist_ok=True)
+
+    # 遍历并复制选定的文件
+    for file_name in selected_files:
+        source_file = source_folder / file_name
+        target_file = target_folder / file_name
+
+        if source_file.exists():
+            shutil.copy(source_file, target_file)
+        else:
+            print(f"File not found: {source_file}")
 
 
-
-
-
-
-
-
+def clear_all_subdirectories(path):
+    # 检查路径是否存在
+    if os.path.exists(path):
+        # 遍历文件夹中的所有子文件夹
+        for folder_name in os.listdir(path):
+            folder_path = os.path.join(path, folder_name)
+            try:
+                # 删除文件夹及其所有内容
+                if os.path.isdir(folder_path):
+                    shutil.rmtree(folder_path)
+            except Exception as e:
+                print(f'Failed to delete {folder_path}. Reason: {e}')
+    else:
+        print(f"The path does not exist: {path}")
 
 
 

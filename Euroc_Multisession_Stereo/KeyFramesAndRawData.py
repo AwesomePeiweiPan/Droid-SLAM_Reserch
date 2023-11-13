@@ -58,11 +58,11 @@ if __name__ == '__main__':
 
     ###设定关键帧存储的目标文件
     dst_paths = [
-    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/MH01",
-    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/MH02",
-    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/MH03",
-    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/MH04",
-    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/MH05",
+    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/cam0/MH01",
+    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/cam0/MH02",
+    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/cam0/MH03",
+    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/cam0/MH04",
+    "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames/cam0/MH05",
     ]
 
     ###设定关键帧数字数据的目标文件
@@ -88,8 +88,14 @@ if __name__ == '__main__':
         droid = Droid(args)
         for (t, image, intrinsics) in tqdm(loop_detect.Euroc_image_stream(args.datapath, stereo=args.stereo, stride=1)):
             droid.track(t, image, intrinsics=intrinsics)
-
         loop_detect.extract_images_by_timestamp(src_path, dst_path, droid.video.tstamp)
+        
+        if args.stereo:
+            src_path = src_path.replace("cam0", "cam1")
+            dst_path = dst_path.replace("cam0", "cam1")
+            loop_detect.clear_directory(dst_path)
+            loop_detect.extract_images_by_timestamp(src_path, dst_path, droid.video.tstamp)
+
         droid.terminate(args.reconstruction_path, loop_detect.Euroc_image_stream(args.datapath, stride=1))
 
         del droid
