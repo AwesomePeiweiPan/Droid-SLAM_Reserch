@@ -10,7 +10,7 @@ from pathlib import Path
 import loop_detect 
 from s_droid import SDroid
 import argparse
-
+import torchgeometry as tgm
 
 
 group_sequence_path = '/home/peiweipan/fbow/Euroc_Maps/GroupSequence/GroupSequence.txt' 
@@ -135,43 +135,77 @@ if __name__ == '__main__':
             #获取loop照片路径
             Loop_directories_list = loop_detect.get_cam0_subdirectories(single_loop_folder_path)
 
-            W2ToW1 = torch.empty((0, 7))
-            idx_accumulator = 0
-            for key, value_list in sequence_data.items():
-                if key > 0:
-                        idx_accumulator += len(sequence_data[key - 1]) - 1
-                for idx, list_item in enumerate(value_list[1:], start=1):  # 从第二个列表项开始
-                    corresponding_idx = idx_accumulator + (idx - 1)
-                    corresponding_loop_dir = Loop_directories_list[corresponding_idx]  # 因为我们从1开始计数，所以需要-1来获得正确的索引
+            while True:
+                W2ToW1 = torch.empty((0, 7))
+                idx_accumulator = 0
+                for key, value_list in sequence_data.items():
+                    if key > 0:
+                            idx_accumulator += len(sequence_data[key - 1]) - 1
+                    for idx, list_item in enumerate(value_list[1:], start=1):  # 从第二个列表项开始
+                        corresponding_idx = idx_accumulator + (idx - 1)
+                        corresponding_loop_dir = Loop_directories_list[corresponding_idx]  # 因为我们从1开始计数，所以需要-1来获得正确的索引
             
-                    #为每个对象添加输入参数并创建对象
-                    args.datapath=corresponding_loop_dir
-                    args.warmup=len(value_list[0])
-                    droid_loop = SDroid(args)
+                        #为每个对象添加输入参数并创建对象
+                        args.datapath=corresponding_loop_dir
+                        args.warmup=len(value_list[0])
+                        droid_loop = SDroid(args)
 
-                    #使用value_list中的索引提取数据, 赋予循环对象初值
-                    droid_loop.video.poses[:len(value_list[0])] = droid_MH_First.video.poses[torch.tensor(value_list[0])]
-                    droid_loop.video.disps[:len(value_list[0])] = droid_MH_First.video.disps[torch.tensor(value_list[0])]
-                    for (t, image, intrinsics) in tqdm(loop_detect.image_stream(args.datapath, stereo=args.stereo, stride=1)):
-                        droid_loop.track(t, image, intrinsics=intrinsics)
-                    #droid_loop.terminate()
+                        #使用value_list中的索引提取数据, 赋予循环对象初值
+                        droid_loop.video.poses[:len(value_list[0])] = droid_MH_First.video.poses[torch.tensor(value_list[0])]
+                        droid_loop.video.disps[:len(value_list[0])] = droid_MH_First.video.disps[torch.tensor(value_list[0])]
+                        for (t, image, intrinsics) in tqdm(loop_detect.image_stream(args.datapath, stereo=args.stereo, stride=1)):
+                            droid_loop.track(t, image, intrinsics=intrinsics)
+                        #droid_loop.terminate()
 
-                    #计算转换矩阵
-                    MH_old_poses = torch.tensor(list_item).tolist()
-                    MH_new_poses = list(range(len(value_list[0]), (len(value_list[0]) + len(list_item))))
+                        #计算转换矩阵
+                        MH_old_poses = torch.tensor(list_item).tolist()
+                        MH_new_poses = list(range(len(value_list[0]), (len(value_list[0]) + len(list_item))))
             
-                    W2ToW1_element=torch.tensor((lietorch.SE3(droid_MH_Second.video.poses[MH_old_poses])*(lietorch.SE3(droid_loop.video.poses[MH_new_poses]).inv())).data.cpu().numpy())
-                    W2ToW1 = torch.cat([W2ToW1, W2ToW1_element], 0)
+                        W2ToW1_element=torch.tensor((lietorch.SE3(droid_MH_Second.video.poses[MH_old_poses])*(lietorch.SE3(droid_loop.video.poses[MH_new_poses]).inv())).data.cpu().numpy())                        
+                        W2ToW1 = torch.cat([W2ToW1, W2ToW1_element], 0)
             
-                    del droid_loop
-                    torch.cuda.empty_cache()
+                        del droid_loop
+                        torch.cuda.empty_cache()
 
-            #使用四分数法得出平均值并打印结果
-            T = loop_detect.compute_filtered_mean(W2ToW1)
-            loop_detect.printTransformMatrix(W2ToW1)    
+                #使用四分数法得出平均值并打印结果
+                T = loop_detect.compute_filtered_mean(W2ToW1)
+                quaternion = T[0, 3:]
+                # 计算四元数的范数
+                norm = torch.norm(quaternion)
+                # 归一化四元数
+                normalized_quaternion = quaternion / norm
+                # 更新T中的四元数部分
+                T[0, 3:] = normalized_quaternion
 
-            #转换坐标并储存，节省了空间
-            New_MH_Keyframes_Second_pose = loop_detect.getTransformedPoses(T, kd_folder2)
+
+                loop_detect.printTransformMatrix(W2ToW1)    
+
+                
+                #转换坐标并储存，节省了空间
+                New_MH_Keyframes_Second_pose = loop_detect.getTransformedPoses(T, kd_folder2)
+
+                droid_MH_Second.video.poses[:New_MH_Keyframes_Second_pose.shape[0]] = New_MH_Keyframes_Second_pose
+                #droid_MH_Second.video.poses = New_MH_Keyframes_Second_pose
+
+                # 检查T的前三个元素,妈的什么鬼！？检查了迭代了反倒出问题了？
+                first_three_elements = T[0, :3]
+                condition1 = torch.all(torch.abs(first_three_elements) < 100)
+
+                # 提取四元数并转换为欧拉角
+                quaternion = T[0, 3:]
+                euler_angles = tgm.quaternion_to_angle_axis(quaternion).view(-1, 3) * (180 / torch.pi)
+
+                # 检查所有角度是否小于10度
+                condition2 = True
+                #condition2 = torch.all(torch.abs(euler_angles) < 10)
+
+                # 最终条件是两个条件都满足
+                final_condition = condition1 and condition2
+
+                # 如果条件满足，则终止循环
+                if final_condition:
+                    break
+
             new_pose_file_path = os.path.join(kd_folder2, "newPosBeforeBackend.npy")
             np.save(new_pose_file_path, New_MH_Keyframes_Second_pose)  # 使用完整路径保存
 

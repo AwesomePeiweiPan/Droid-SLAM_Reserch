@@ -106,7 +106,7 @@ class Droid:
         np.save(os.path.join(reconstruction_path, "nets.npy"), self.video.nets[:t].cpu().numpy())
 
 
-    def terminate(self, reconstruction_path, stream=None):
+    def terminate(self, reconstruction_path):
         """ terminate the visualization process, return poses [t, q] """
 
         del self.frontend
@@ -123,4 +123,20 @@ class Droid:
 
         #camera_trajectory = self.traj_filler(stream)
         #return camera_trajectory.inv().data.cpu().numpy()
+
+    def terminate(self, stream=None):
+        """ terminate the visualization process, return poses [t, q] """
+
+        del self.frontend
+
+        torch.cuda.empty_cache()
+        print("#" * 32)
+        self.backend(7)
+
+        torch.cuda.empty_cache()
+        print("#" * 32)
+        self.backend(12)
+
+        camera_trajectory = self.traj_filler(stream)
+        return camera_trajectory.inv().data.cpu().numpy()
 

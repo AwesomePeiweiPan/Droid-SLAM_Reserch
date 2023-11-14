@@ -17,12 +17,6 @@ from droid import Droid
 import torch.nn.functional as F
 
 
-
-def show_image(image):
-    image = image.permute(1, 2, 0).cpu().numpy()
-    cv2.imshow('image', image / 255.0)
-    cv2.waitKey(1)
-
 def image_stream(datapath, image_size=[320, 512], stereo=False, stride=1):
     """ image generator """
 
@@ -52,7 +46,7 @@ def image_stream(datapath, image_size=[320, 512], stereo=False, stride=1):
     ht0, wd0 = [480, 752]
 
     # read all png images in folder
-    images_left = sorted(glob.glob(os.path.join(datapath, 'cam0/data/*.png')))[::stride]
+    images_left = sorted(glob.glob(os.path.join(datapath, '*.png')))[::stride]
     images_right = [x.replace('cam0', 'cam1') for x in images_left]
 
     for t, (imgL, imgR) in enumerate(zip(images_left, images_right)):
@@ -104,21 +98,35 @@ if __name__ == '__main__':
 
     torch.multiprocessing.set_start_method('spawn')
 
-    print("Running evaluation on {}".format(args.datapath))
-    print(args)
+    args.datapath = "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH01/mav0/cam0/data/"
+    M1_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD01/"
+    args.gt = "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH01.txt"
     args.stereo = True
     args.disable_vis = True
-    args.datapath="/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH05/mav0/"
-    args.gt="data/euroc_groundtruth/MH_05_difficult.txt"
-    droid = Droid(args)
-    time.sleep(5)
 
-    for (t, image, intrinsics) in tqdm(image_stream(args.datapath, stereo=args.stereo, stride=1)):
-        droid.track(t, image, intrinsics=intrinsics)
+    M_First = {}
+    M_First['tstamps'] = np.load(os.path.join(M1_path, 'tstamps.npy'))
+    M_First['poses'] = np.load(os.path.join(M1_path, 'poses.npy'))
+    M_First['disps'] = np.load(os.path.join(M1_path, 'disps.npy'))
+    M_First['images'] = np.load(os.path.join(M1_path, 'images.npy'))
+    M_First['intrinsics'] = np.load(os.path.join(M1_path, 'intrinsics.npy'))
+    M_First['fmaps'] = np.load(os.path.join(M1_path, 'fmaps.npy'))
+    M_First['inps'] = np.load(os.path.join(M1_path, 'inps.npy'))
+    M_First['nets'] = np.load(os.path.join(M1_path, 'nets.npy'))
 
-    traj_est = droid.terminate(image_stream(args.datapath, stride=1))
+    droid_MH = Droid(args)
+    droid_MH.video.tstamp[:M_First['tstamps'].shape[0]] = torch.from_numpy(M_First['tstamps'])
+    droid_MH.video.poses[:M_First['poses'].shape[0]] = torch.from_numpy(M_First['poses'])
+    droid_MH.video.disps[:M_First['disps'].shape[0]] = torch.from_numpy(M_First['disps'])
+    droid_MH.video.images[:M_First['images'].shape[0]] = torch.from_numpy(M_First['images'])
+    droid_MH.video.intrinsics[:M_First['intrinsics'].shape[0]] = torch.from_numpy(M_First['intrinsics'])
+    droid_MH.video.fmaps[:M_First['fmaps'].shape[0]] = torch.from_numpy(M_First['fmaps'])
+    droid_MH.video.inps[:M_First['inps'].shape[0]] = torch.from_numpy(M_First['inps'])
+    droid_MH.video.nets[:M_First['nets'].shape[0]] = torch.from_numpy(M_First['nets'])
 
-    ### run evaluation ###
+    droid_MH.video.counter.value=M_First['tstamps'].shape[0]
+
+    traj_est = droid_MH.terminate(image_stream(args.datapath, stereo=args.stereo, stride=1))
 
     import evo
     from evo.core.trajectory import PoseTrajectory3D
@@ -127,14 +135,14 @@ if __name__ == '__main__':
     import evo.main_ape as main_ape
     from evo.core.metrics import PoseRelation
 
-    images_list = sorted(glob.glob(os.path.join(args.datapath, 'cam0/data/*.png')))
+    images_list = sorted(glob.glob(os.path.join(args.datapath, '*.png')))
     tstamps = [float(x.split('/')[-1][:-4]) for x in images_list]
 
     traj_est = PoseTrajectory3D(
         positions_xyz=1.10 * traj_est[:,:3],
         orientations_quat_wxyz=traj_est[:,3:],
         timestamps=np.array(tstamps))
-
+    
     traj_ref = file_interface.read_tum_trajectory_file(args.gt)
 
     traj_ref, traj_est = sync.associate_trajectories(traj_ref, traj_est)
@@ -143,5 +151,3 @@ if __name__ == '__main__':
         pose_relation=PoseRelation.translation_part, align=True, correct_scale=True)
 
     print(result)
-
-
