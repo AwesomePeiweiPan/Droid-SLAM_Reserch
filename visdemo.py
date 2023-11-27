@@ -14,7 +14,6 @@ from lietorch import SE3
 import loop_detect 
 from s_droid import SDroid
 import time
-import os
 
 
 if __name__ == "__main__":
@@ -23,7 +22,7 @@ if __name__ == "__main__":
     parser.add_argument("--datapath", help="path to euroc sequence")
     parser.add_argument("--gt", help="path to gt file")
     parser.add_argument("--weights", default="droid.pth")
-    parser.add_argument("--buffer", type=int, default=2000)
+    parser.add_argument("--buffer", type=int, default=1000)
     parser.add_argument("--image_size", default=[320,512])
     parser.add_argument("--disable_vis", action="store_true")
     parser.add_argument("--stereo", action="store_true")
@@ -50,94 +49,24 @@ if __name__ == "__main__":
     #spawn启动更加稳定
     torch.multiprocessing.set_start_method('spawn')
 
-    M1_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD01/"
-    M2_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD02/"
-    M3_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD03/"
-    M4_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD04/"
-    M5_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD05/"
-
-    M_First = {}
-    M_First['poses'] = np.load(os.path.join(M1_path, 'poses.npy'))
-    M_First['disps'] = np.load(os.path.join(M1_path, 'disps.npy'))
-    M_First['images'] = np.load(os.path.join(M1_path, 'images.npy'))
-    M_First['intrinsics'] = np.load(os.path.join(M1_path, 'intrinsics.npy'))
-
-    M_Second = {}
-    M_Second['poses'] = np.load(os.path.join(M2_path, 'poses.npy'))
-    M_Second['disps'] = np.load(os.path.join(M2_path, 'disps.npy'))
-    M_Second['images'] = np.load(os.path.join(M2_path, 'images.npy'))
-    M_Second['intrinsics'] = np.load(os.path.join(M2_path, 'intrinsics.npy'))
-
-
-    # M_Third
-    M_Third = {}
-    M_Third['poses'] = np.load(os.path.join(M3_path, 'poses.npy'))
-    M_Third['disps'] = np.load(os.path.join(M3_path, 'disps.npy'))
-    M_Third['images'] = np.load(os.path.join(M3_path, 'images.npy'))
-    M_Third['intrinsics'] = np.load(os.path.join(M3_path, 'intrinsics.npy'))
-
-    # M_Fourth
-    M_Fourth = {}
-    M_Fourth['poses'] = np.load(os.path.join(M4_path, 'poses.npy'))
-    M_Fourth['disps'] = np.load(os.path.join(M4_path, 'disps.npy'))
-    M_Fourth['images'] = np.load(os.path.join(M4_path, 'images.npy'))
-    M_Fourth['intrinsics'] = np.load(os.path.join(M4_path, 'intrinsics.npy'))
-
-    # M_Fifth
-    M_Fifth = {}
-    M_Fifth['poses'] = np.load(os.path.join(M5_path, 'poses.npy'))
-    M_Fifth['disps'] = np.load(os.path.join(M5_path, 'disps.npy'))
-    M_Fifth['images'] = np.load(os.path.join(M5_path, 'images.npy'))
-    M_Fifth['intrinsics'] = np.load(os.path.join(M5_path, 'intrinsics.npy'))
+    reconstruction_path = "Vis"
+    MH_Mul = {}
+    MH_Mul['disps'] = np.load(f"reconstructions/{reconstruction_path}/disps.npy")
+    MH_Mul['poses'] = np.load(f"reconstructions/{reconstruction_path}/poses.npy")
+    MH_Mul['images'] = np.load(f"reconstructions/{reconstruction_path}/images.npy")
+    MH_Mul['intrinsics'] = np.load(f"reconstructions/{reconstruction_path}/intrinsics.npy")
 
     droid_MH = SDroid(args)
-    # 初始化一个列表，用于存储每组数据中 poses 的长度
-    poses_lengths = []
-
-    # 加载 M_First 数据
-    droid_MH.video.poses[:M_First['poses'].shape[0]] = torch.from_numpy(M_First['poses'])
-    droid_MH.video.disps[:M_First['disps'].shape[0]] = torch.from_numpy(M_First['disps'])
-    droid_MH.video.images[:M_First['images'].shape[0]] = torch.from_numpy(M_First['images'])
-    droid_MH.video.intrinsics[:M_First['intrinsics'].shape[0]] = torch.from_numpy(M_First['intrinsics'])
-
-    # 将 M_First 的 poses 长度添加到列表
-    poses_lengths.append(M_First['poses'].shape[0])
-
-    # 定义一个变量，用于追踪当前填充的位置
-    current_pos = M_First['poses'].shape[0]
-
-    # 为 M_Second, M_Third, M_Fourth, M_Fifth 进行同样的操作
-    datasets = [M_Second, M_Third, M_Fourth, M_Fifth]
-    for dataset in datasets:
-        poses_len = dataset['poses'].shape[0]
-        disps_len = dataset['disps'].shape[0]
-        images_len = dataset['images'].shape[0]
-        intrinsics_len = dataset['intrinsics'].shape[0]
-
-        droid_MH.video.poses[current_pos:current_pos + poses_len] = torch.from_numpy(dataset['poses'])
-        droid_MH.video.disps[current_pos:current_pos + disps_len] = torch.from_numpy(dataset['disps'])
-        droid_MH.video.images[current_pos:current_pos + images_len] = torch.from_numpy(dataset['images'])
-        droid_MH.video.intrinsics[current_pos:current_pos + intrinsics_len] = torch.from_numpy(dataset['intrinsics'])
-
-        # 更新 current_pos 和 poses_lengths
-        current_pos += poses_len
-        poses_lengths.append(poses_len)
+    droid_MH.video.poses[:MH_Mul['poses'].shape[0]] = torch.from_numpy(MH_Mul['poses'])
+    droid_MH.video.disps[:MH_Mul['disps'].shape[0]] = torch.from_numpy(MH_Mul['disps'])
+    droid_MH.video.images[:MH_Mul['images'].shape[0]] = torch.from_numpy(MH_Mul['images'])
+    droid_MH.video.intrinsics[:MH_Mul['intrinsics'].shape[0]] = torch.from_numpy(MH_Mul['intrinsics'])
 
     # 假设 MH_Mul['poses'] 已经存在并且我们知道它的形状
-    end_value =M_First['poses'].shape[0] +M_Second['poses'].shape[0]+M_Third['poses'].shape[0]+M_Fourth['poses'].shape[0]+M_Fifth['poses'].shape[0]
+    end_value = MH_Mul['poses'].shape[0]
     # 初始设置
-    i=0
     droid_MH.video.counter.value = 0                
-    droid_MH.video.imageSeries[M_First['poses'].shape[0]:M_First['poses'].shape[0] +M_Second['poses'].shape[0]] = 2
-    i=M_First['poses'].shape[0] +M_Second['poses'].shape[0]
-    droid_MH.video.imageSeries[i:i+M_Third['poses'].shape[0]] = 4
-    i=i+M_Third['poses'].shape[0]
-    droid_MH.video.imageSeries[i:i+M_Fourth['poses'].shape[0]] = 6
-    i=i+M_Fourth['poses'].shape[0]
-    droid_MH.video.imageSeries[i:i+M_Fifth['poses'].shape[0]] = 8
-
-
-
+    droid_MH.video.imageSeries[280:600] = 1
 
     # 循环
     for i in range(end_value):

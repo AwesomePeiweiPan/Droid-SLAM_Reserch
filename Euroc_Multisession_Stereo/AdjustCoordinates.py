@@ -17,11 +17,6 @@ group_sequence_path = '/home/peiweipan/fbow/Euroc_Maps/GroupSequence/GroupSequen
 loop_folder_path = '/home/peiweipan/Projects/DroidSlam/EurocData/Loop'  
 keyframe_data_file_path = '/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames' 
 transfomed_pose_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/"  # 替换为新文件夹的路径
-  
-
-
-
-
 
 
 
@@ -187,21 +182,18 @@ if __name__ == '__main__':
                 droid_MH_Second.video.poses[:New_MH_Keyframes_Second_pose.shape[0]] = New_MH_Keyframes_Second_pose
                 #droid_MH_Second.video.poses = New_MH_Keyframes_Second_pose
 
-                # 检查T的前三个元素,妈的什么鬼！？检查了迭代了反倒出问题了？
+                # 检查T的前三个元素,什么鬼！？检查了迭代了反倒出问题了？
                 first_three_elements = T[0, :3]
-                condition1 = torch.all(torch.abs(first_three_elements) < 100)
-
+                condition1 = True
+                #condition1 = torch.all(torch.abs(first_three_elements) < 0.2)
                 # 提取四元数并转换为欧拉角
                 quaternion = T[0, 3:]
                 euler_angles = tgm.quaternion_to_angle_axis(quaternion).view(-1, 3) * (180 / torch.pi)
-
                 # 检查所有角度是否小于10度
                 condition2 = True
                 #condition2 = torch.all(torch.abs(euler_angles) < 10)
-
                 # 最终条件是两个条件都满足
                 final_condition = condition1 and condition2
-
                 # 如果条件满足，则终止循环
                 if final_condition:
                     break

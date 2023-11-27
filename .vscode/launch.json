@@ -56,13 +56,66 @@
             },
             "args" : ["--weights=droid.pth"]            
         },
-
+        {
+            "name": "Euroc Backend All Maps",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/Euroc_Multisession_Stereo/BackendAllMaps.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },
+            "args" : []            
+        },
         {
             "name": "Evaluate_Demo.py",
             "type": "python",
             //"attach" 将调试器附加到已经运行的进程
             "request": "launch",
             "program": "/home/peiweipan/Projects/DroidSlam/evaluation_scripts/test_euroc.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },
+            "args" : ["--weights=droid.pth"]            
+        },
+        {
+            "name": "Evaluate All Maps.py",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/Euroc_Multisession_Stereo/Evaluate_All_Maps.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },
+            "args" : ["--weights=droid.pth"]            
+        },
+        {
+            "name": "Vis All Maps.py",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/vis_all.py",
             "console": "integratedTerminal",
             //调试时只进入编写的代码，而不进入内置函数
             "justMyCode": true,

@@ -16,16 +16,6 @@ from droid import Droid
 
 import torch.nn.functional as F
 
-import os
-
-import loop_detect 
-
-
-
-def show_image(image):
-    image = image.permute(1, 2, 0).cpu().numpy()
-    cv2.imshow('image', image / 255.0)
-    cv2.waitKey(1)
 
 def image_stream(datapath, image_size=[320, 512], stereo=False, stride=1):
     """ image generator """
@@ -62,16 +52,14 @@ def image_stream(datapath, image_size=[320, 512], stereo=False, stride=1):
     for t, (imgL, imgR) in enumerate(zip(images_left, images_right)):
         if stereo and not os.path.isfile(imgR):
             continue
-        #取最后一个/后面的数字，并且取.png前面的数字
-        tstamp = float(imgL.split('/')[-1][:-4])  
-        #重新映射图像的像素。这个函数常用于校正畸变的图像，例如鱼眼镜头拍摄的图像，并使用双线性插值处理图像      
+        tstamp = float(imgL.split('/')[-1][:-4])        
         images = [cv2.remap(cv2.imread(imgL), map_l[0], map_l[1], interpolation=cv2.INTER_LINEAR)]
         if stereo:
             images += [cv2.remap(cv2.imread(imgR), map_r[0], map_r[1], interpolation=cv2.INTER_LINEAR)]
         
-        images = torch.from_numpy(np.stack(images, 0))   #把images按照第0维度叠加，变成[2,480,752,3]
+        images = torch.from_numpy(np.stack(images, 0))
         images = images.permute(0, 3, 1, 2).to("cuda:0", dtype=torch.float32)
-        images = F.interpolate(images, image_size, mode="bilinear", align_corners=False) #双线性插值改变图片的大小到image_size
+        images = F.interpolate(images, image_size, mode="bilinear", align_corners=False)
         
         intrinsics = torch.as_tensor(intrinsics_vec).cuda()
         intrinsics[0] *= image_size[1] / wd0
@@ -104,27 +92,71 @@ if __name__ == '__main__':
     parser.add_argument("--backend_thresh", type=float, default=24.0)
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=2)
+
     parser.add_argument("--upsample", action="store_true")
-    parser.add_argument("--reconstruction_path", help="path to saved reconstruction")
     args = parser.parse_args()
 
-    #设置多进程启动方法，相比于默认的fork启动，不从父进程的某个状态开始，而启动一个新的解释器进程并从头开始运行程序
-    #涉及GPU和CUDA编程的时候更加稳定
     torch.multiprocessing.set_start_method('spawn')
 
-    droid = Droid(args)
+    args.datapath = "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH05/mav0/cam0/data/"
+    M1_path = "/home/peiweipan/Projects/DroidSlam/EurocData/AllMapsPoses/"
+    args.gt = "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_05_difficult.txt"
+    args.stereo = True
+    args.disable_vis = True
 
-    for (t, image, intrinsics) in tqdm(image_stream(args.datapath, stereo=args.stereo, stride=1)):
-        droid.track(t, image, intrinsics=intrinsics)
-    
-    #提取关键帧对应的图片到一个文件夹中
-    if 0:
-        src_path = '/home/peiweipan/Projects/DroidSlam/datasets/MH02/cam1/data/'
-        dst_path = '/home/peiweipan/fbow/Euroc_MH/KeyFrames/MH02_cam1/'
-        loop_detect.extract_images_by_timestamp(src_path,dst_path,droid.video.tstamp)
-        
-    #traj_est = droid.terminate(args.reconstruction_path, image_stream(args.datapath, stride=1))
-    #traj_est = droid.terminate(image_stream(args.datapath, stride=1))
-    
+    M_First = {}
+    M_First['tstamp'] = np.load(os.path.join(M1_path, 'tstamp.npy'))
+    M_First['poses'] = np.load(os.path.join(M1_path, 'poses.npy'))
+    M_First['disps'] = np.load(os.path.join(M1_path, 'disps.npy'))
+    M_First['images'] = np.load(os.path.join(M1_path, 'images.npy'))
+    M_First['intrinsics'] = np.load(os.path.join(M1_path, 'intrinsics.npy'))
+    M_First['fmaps'] = np.load(os.path.join(M1_path, 'fmaps.npy'))
+    M_First['inps'] = np.load(os.path.join(M1_path, 'inps.npy'))
+    M_First['nets'] = np.load(os.path.join(M1_path, 'nets.npy'))
 
-    print("Finish")
+    M_First['tstamp'] = M_First['tstamp'][508:601]
+    M_First['poses'] = M_First['poses'][508:601]
+    M_First['disps'] = M_First['disps'][508:601]
+    M_First['images'] = M_First['images'][508:601]
+    M_First['intrinsics'] = M_First['intrinsics'][508:601]
+    M_First['fmaps'] = M_First['fmaps'][508:601]
+    M_First['inps'] = M_First['inps'][508:601]
+    M_First['nets'] = M_First['nets'][508:601]
+
+    droid_MH = Droid(args)
+    droid_MH.video.tstamp[:M_First['tstamp'].shape[0]] = torch.from_numpy(M_First['tstamp'])
+    droid_MH.video.poses[:M_First['poses'].shape[0]] = torch.from_numpy(M_First['poses'])
+    droid_MH.video.disps[:M_First['disps'].shape[0]] = torch.from_numpy(M_First['disps'])
+    droid_MH.video.images[:M_First['images'].shape[0]] = torch.from_numpy(M_First['images'])
+    droid_MH.video.intrinsics[:M_First['intrinsics'].shape[0]] = torch.from_numpy(M_First['intrinsics'])
+    droid_MH.video.fmaps[:M_First['fmaps'].shape[0]] = torch.from_numpy(M_First['fmaps'])
+    droid_MH.video.inps[:M_First['inps'].shape[0]] = torch.from_numpy(M_First['inps'])
+    droid_MH.video.nets[:M_First['nets'].shape[0]] = torch.from_numpy(M_First['nets'])
+
+    droid_MH.video.counter.value=M_First['tstamp'].shape[0]
+
+    traj_est = droid_MH.terminate(image_stream(args.datapath, stereo=args.stereo, stride=1))
+
+    import evo
+    from evo.core.trajectory import PoseTrajectory3D
+    from evo.tools import file_interface
+    from evo.core import sync
+    import evo.main_ape as main_ape
+    from evo.core.metrics import PoseRelation
+
+    images_list = sorted(glob.glob(os.path.join(args.datapath, '*.png')))
+    tstamps = [float(x.split('/')[-1][:-4]) for x in images_list]
+
+    traj_est = PoseTrajectory3D(
+        positions_xyz=1.10 * traj_est[:,:3],
+        orientations_quat_wxyz=traj_est[:,3:],
+        timestamps=np.array(tstamps))
+    
+    traj_ref = file_interface.read_tum_trajectory_file(args.gt)
+
+    traj_ref, traj_est = sync.associate_trajectories(traj_ref, traj_est)
+
+    result = main_ape.ape(traj_ref, traj_est, est_name='traj', 
+        pose_relation=PoseRelation.translation_part, align=True, correct_scale=True)
+
+    print(result)
