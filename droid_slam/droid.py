@@ -124,7 +124,7 @@ class Droid:
         #camera_trajectory = self.traj_filler(stream)
         #return camera_trajectory.inv().data.cpu().numpy()
 
-    def terminate(self, stream=None):
+    def terminate_eva(self, stream=None):
         """ terminate the visualization process, return poses [t, q] """
 
         del self.frontend

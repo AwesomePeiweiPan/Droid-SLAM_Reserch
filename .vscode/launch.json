@@ -3,6 +3,101 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "VMap_KeyFrameAndRawData",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/VMap_Multisession_Stereo/Vmap_KeyFramesAndRawData.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },
+            "args" : ["--weights=droid.pth"]            
+        },
+        {
+            "name": "VMap AdjustCoordinates",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/VMap_Multisession_Stereo/Vmap_AdjustCoordinates.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },
+            "args" : ["--weights=droid.pth"]            
+        },
+        {
+            "name": "VMap Check Stereo Equal",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/VMap_Multisession_Stereo/CheckStereoEqual.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },    
+        },
+        {
+            "name": "V Map Whole Evaluate",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/VMap_Multisession_Stereo/Vmap_Whole_Evaluate.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },
+            "args" : ["--weights=droid.pth"]            
+        },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        {
             "name": "Euroc_KeyFrameAndRawData",
             "type": "python",
             //"attach" 将调试器附加到已经运行的进程
@@ -128,7 +223,24 @@
             },
             "args" : ["--weights=droid.pth"]            
         },
-
+        {
+            "name": "Whole Evaluate",
+            "type": "python",
+            //"attach" 将调试器附加到已经运行的进程
+            "request": "launch",
+            "program": "/home/peiweipan/Projects/DroidSlam/Euroc_Multisession_Stereo/Whole_Evaluate.py",
+            "console": "integratedTerminal",
+            //调试时只进入编写的代码，而不进入内置函数
+            "justMyCode": true,
+            //ignore function variables and special variables
+            //variablePresentation will appear underlined with yellow because it's not declared in package.json in vscode-python 
+            //(but debugpy should understand it anyways)", so I believe you can just ignore the yellow line.
+            "variablePresentation": {
+                "function": "hide",
+                "special": "hide",
+            },
+            "args" : ["--weights=droid.pth"]            
+        },
 
 
 
@@ -269,7 +381,7 @@
                 "special": "hide",
             },            
             //args可以设置命令行的参数
-            "args" : ["--imagedir=data/abandonedfactory", "--calib=calib/tartan.txt", "--stride=2", ]
+            "args" : ["--imagedir=data/abandonedfactory", "--calib=calib/tartan.txt", "--stride=2", "--disable_vis" ]
         },
         {
             "name": "get_transformation",

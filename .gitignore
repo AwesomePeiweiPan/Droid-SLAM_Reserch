@@ -159,6 +159,8 @@ figures/*.pdf
 reconstructions
 Notes/*
 EurocData/*
+HiltiData/*
+VMapData/*
 
 
 

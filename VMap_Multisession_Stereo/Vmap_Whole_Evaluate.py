@@ -10,11 +10,31 @@ import os
 import glob 
 import time
 import argparse
-
+import evo
+from evo.core.trajectory import PoseTrajectory3D
+from evo.tools import file_interface
+from evo.core import sync
+import evo.main_ape as main_ape
+from evo.core.metrics import PoseRelation
 from torch.multiprocessing import Process
 from droid import Droid
-
 import torch.nn.functional as F
+
+# 定义轨迹文件的路径
+true_paths = ["/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/V2_01_easy.txt",
+              "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/V2_02_medium.txt",
+              "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/V2_03_difficult.txt",]
+
+datapaths = ["/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V01/cam0/data/",
+             "/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V02/cam0/data/",
+             "/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V03/cam0/data/",]
+
+DataNum_paths = ["/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/KD01/",
+                 "/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/KD02/",
+                 "/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/KD03/",]
+
+
+
 
 
 def image_stream(datapath, image_size=[320, 512], stereo=False, stride=1):
@@ -70,7 +90,10 @@ def image_stream(datapath, image_size=[320, 512], stereo=False, stride=1):
         yield stride*t, images, intrinsics
 
 
+
+
 if __name__ == '__main__':
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--datapath", help="path to euroc sequence")
     parser.add_argument("--gt", help="path to gt file")
@@ -79,7 +102,6 @@ if __name__ == '__main__':
     parser.add_argument("--image_size", default=[320,512])
     parser.add_argument("--disable_vis", action="store_true")
     parser.add_argument("--stereo", action="store_true")
-
     parser.add_argument("--beta", type=float, default=0.3)
     parser.add_argument("--filter_thresh", type=float, default=2.4)
     parser.add_argument("--warmup", type=int, default=15)
@@ -88,66 +110,89 @@ if __name__ == '__main__':
     parser.add_argument("--frontend_window", type=int, default=20)
     parser.add_argument("--frontend_radius", type=int, default=2)
     parser.add_argument("--frontend_nms", type=int, default=1)
-
     parser.add_argument("--backend_thresh", type=float, default=24.0)
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=2)
-
     parser.add_argument("--upsample", action="store_true")
-    args = parser.parse_args()
-
     torch.multiprocessing.set_start_method('spawn')
-
-    args.datapath = "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH05/mav0/cam0/data/"
-    M1_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD05/"
-    args.gt = "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_05_difficult.txt"
+    args = parser.parse_args()
     args.stereo = True
     args.disable_vis = True
 
-    M_First = {}
-    M_First['tstamps'] = np.load(os.path.join(M1_path, 'tstamps.npy'))
-    M_First['poses'] = np.load(os.path.join(M1_path, 'poses.npy'))
-    M_First['disps'] = np.load(os.path.join(M1_path, 'disps.npy'))
-    M_First['images'] = np.load(os.path.join(M1_path, 'images.npy'))
-    M_First['intrinsics'] = np.load(os.path.join(M1_path, 'intrinsics.npy'))
-    M_First['fmaps'] = np.load(os.path.join(M1_path, 'fmaps.npy'))
-    M_First['inps'] = np.load(os.path.join(M1_path, 'inps.npy'))
-    M_First['nets'] = np.load(os.path.join(M1_path, 'nets.npy'))
 
-    droid_MH = Droid(args)
-    droid_MH.video.tstamp[:M_First['tstamps'].shape[0]] = torch.from_numpy(M_First['tstamps'])
-    droid_MH.video.poses[:M_First['poses'].shape[0]] = torch.from_numpy(M_First['poses'])
-    droid_MH.video.disps[:M_First['disps'].shape[0]] = torch.from_numpy(M_First['disps'])
-    droid_MH.video.images[:M_First['images'].shape[0]] = torch.from_numpy(M_First['images'])
-    droid_MH.video.intrinsics[:M_First['intrinsics'].shape[0]] = torch.from_numpy(M_First['intrinsics'])
-    droid_MH.video.fmaps[:M_First['fmaps'].shape[0]] = torch.from_numpy(M_First['fmaps'])
-    droid_MH.video.inps[:M_First['inps'].shape[0]] = torch.from_numpy(M_First['inps'])
-    droid_MH.video.nets[:M_First['nets'].shape[0]] = torch.from_numpy(M_First['nets'])
+    droid_positions = []
+    droid_orientations = []
+    droid_timestamps = []
 
-    droid_MH.video.counter.value=M_First['tstamps'].shape[0]
+    for datapath, datanum_path in zip(datapaths, DataNum_paths):
+        
+        M_Data = {}
+        M_Data['tstamps'] = np.load(os.path.join(datanum_path, 'tstamps.npy'))
+        M_Data['poses'] = np.load(os.path.join(datanum_path, 'poses.npy'))
+        M_Data['disps'] = np.load(os.path.join(datanum_path, 'disps.npy'))
+        M_Data['images'] = np.load(os.path.join(datanum_path, 'images.npy'))
+        M_Data['intrinsics'] = np.load(os.path.join(datanum_path, 'intrinsics.npy'))
+        M_Data['fmaps'] = np.load(os.path.join(datanum_path, 'fmaps.npy'))
+        M_Data['inps'] = np.load(os.path.join(datanum_path, 'inps.npy'))
+        M_Data['nets'] = np.load(os.path.join(datanum_path, 'nets.npy'))
 
-    traj_est = droid_MH.terminate(image_stream(args.datapath, stereo=args.stereo, stride=1))
+        args.datapath = datapath
+        droid_MH = Droid(args)
+        droid_MH.video.tstamp[:M_Data['tstamps'].shape[0]] = torch.from_numpy(M_Data['tstamps'])
+        droid_MH.video.poses[:M_Data['poses'].shape[0]] = torch.from_numpy(M_Data['poses'])
+        droid_MH.video.disps[:M_Data['disps'].shape[0]] = torch.from_numpy(M_Data['disps'])
+        droid_MH.video.images[:M_Data['images'].shape[0]] = torch.from_numpy(M_Data['images'])
+        droid_MH.video.intrinsics[:M_Data['intrinsics'].shape[0]] = torch.from_numpy(M_Data['intrinsics'])
+        droid_MH.video.fmaps[:M_Data['fmaps'].shape[0]] = torch.from_numpy(M_Data['fmaps'])
+        droid_MH.video.inps[:M_Data['inps'].shape[0]] = torch.from_numpy(M_Data['inps'])
+        droid_MH.video.nets[:M_Data['nets'].shape[0]] = torch.from_numpy(M_Data['nets'])
+        droid_MH.video.counter.value=M_Data['tstamps'].shape[0]
 
-    import evo
-    from evo.core.trajectory import PoseTrajectory3D
-    from evo.tools import file_interface
-    from evo.core import sync
-    import evo.main_ape as main_ape
-    from evo.core.metrics import PoseRelation
+        droid_traj = droid_MH.terminate_eva(image_stream(args.datapath, stereo=args.stereo, stride=1))
 
-    images_list = sorted(glob.glob(os.path.join(args.datapath, '*.png')))
-    tstamps = [float(x.split('/')[-1][:-4]) for x in images_list]
+        del droid_MH
+        torch.cuda.empty_cache()
+        images_list = sorted(glob.glob(os.path.join(args.datapath, '*.png')))
+        tstamps = [float(x.split('/')[-1][:-4]) for x in images_list]
+
+        droid_positions.append(1.10 * droid_traj[:,:3])
+        droid_orientations.append(droid_traj[:,3:])
+        droid_timestamps.append(np.array(tstamps))
+    
+    droid_positions_combined = np.vstack(droid_positions)
+    droid_orientations_combined = np.vstack(droid_orientations)
+    droid_timestamps_combined = np.concatenate(droid_timestamps)
 
     traj_est = PoseTrajectory3D(
-        positions_xyz=1.10 * traj_est[:,:3],
-        orientations_quat_wxyz=traj_est[:,3:],
-        timestamps=np.array(tstamps))
-    
+        positions_xyz=droid_positions_combined,
+        orientations_quat_wxyz=droid_orientations_combined,
+        timestamps=droid_timestamps_combined
+    )
 
 
+    # 初始化空数组以存储合并后的数据
+    true_positions = []
+    true_orientations = []
+    true_timestamps = []
 
-    
-    traj_ref = file_interface.read_tum_trajectory_file(args.gt)
+    # 遍历路径并合并数据
+    for path in true_paths:
+        traj_ref_single = file_interface.read_tum_trajectory_file(path)
+        true_positions.append(traj_ref_single.positions_xyz[:,:3])
+        true_orientations.append(traj_ref_single.orientations_quat_wxyz)
+        true_timestamps.append(np.array(traj_ref_single.timestamps))
+
+    # 使用 np.vstack 和 np.concatenate 合并数据
+    true_positions_combined = np.vstack(true_positions)
+    true_orientations_combined = np.vstack(true_orientations)
+    true_timestamps_combined = np.concatenate(true_timestamps)
+
+    # 创建 PoseTrajectory3D 对象
+    traj_ref = PoseTrajectory3D(
+        positions_xyz=true_positions_combined,
+        orientations_quat_wxyz=true_orientations_combined,
+        timestamps=true_timestamps_combined
+    )
 
     traj_ref, traj_est = sync.associate_trajectories(traj_ref, traj_est)
 
