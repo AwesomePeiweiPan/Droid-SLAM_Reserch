@@ -323,6 +323,7 @@ def getTransformedPoses(T, second_coor):
 
 
 
+
 def save_reconstruction_for_Vis(droid, reconstruction_path):
 
     from pathlib import Path
@@ -394,6 +395,26 @@ def clear_all_subdirectories(path):
     else:
         print(f"The path does not exist: {path}")
 
+
+def remove_outlier_row(tensor):
+    # 计算前三列的平均值
+    fouth_values = compute_filtered_mean(tensor)
+
+    # 计算每一行与平均值的差异
+    diffs = (tensor - fouth_values).norm(dim=1)
+
+    # 找到差异最大的行
+    max_diff_index = torch.argmax(diffs)
+
+    # 移除该行
+    tensor = torch.cat([tensor[:max_diff_index], tensor[max_diff_index + 1:]])
+
+    return tensor, max_diff_index.item()
+
+def remove_row_from_array(array, row_index):
+    # 移除指定索引的行
+    new_array = np.delete(array, row_index, axis=0)
+    return new_array
 
 
 

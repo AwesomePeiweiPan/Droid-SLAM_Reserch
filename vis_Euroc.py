@@ -50,11 +50,11 @@ if __name__ == "__main__":
     #spawn启动更加稳定
     torch.multiprocessing.set_start_method('spawn')
 
-    M1_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD01/"
-    M2_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD02/"
-    M3_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD03/"
-    M4_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD04/"
-    M5_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD05/"
+    M1_path = "/home/peiweipan/Projects/DroidSlam/EurocData/ImproveTrans/KD01/"
+    M2_path = "/home/peiweipan/Projects/DroidSlam/EurocData/ImproveTrans/KD02/"
+    M3_path = "/home/peiweipan/Projects/DroidSlam/EurocData/ImproveTrans/KD03/"
+    M4_path = "/home/peiweipan/Projects/DroidSlam/EurocData/ImproveTrans/KD04/"
+    M5_path = "/home/peiweipan/Projects/DroidSlam/EurocData/ImproveTrans/KD05/"
 
     M_First = {}
     M_First['poses'] = np.load(os.path.join(M1_path, 'poses.npy'))
