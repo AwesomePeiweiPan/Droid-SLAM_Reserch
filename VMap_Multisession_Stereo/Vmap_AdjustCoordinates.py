@@ -13,10 +13,10 @@ import argparse
 import torchgeometry as tgm
 
 
-group_sequence_path = '/home/peiweipan/fbow/Vmap_Maps/site2/GroupSequence/GroupSequence.txt' 
-loop_folder_path = '/home/peiweipan/Projects/DroidSlam/VMapData/Loop/site2/'  
-keyframe_data_file_path = '/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/' 
-transfomed_pose_path = "/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/"  # 替换为新文件夹的路径
+group_sequence_path = '/home/peiweipan/fbow/Vmap_Maps/site1/GroupSequence/GroupSequence.txt' 
+loop_folder_path = '/home/peiweipan/Projects/DroidSlam/VMapData/Loop_new/site1/'  
+keyframe_data_file_path = '/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site1/' 
+transfomed_pose_path = "/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos_new/site1/"  # 替换为新文件夹的路径
 
 
 
@@ -89,6 +89,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=2)
     parser.add_argument("--upsample", action="store_true")
+    parser.add_argument("--Good", action="store_true")
     args = parser.parse_args()
     #spawn启动更加稳定
     torch.multiprocessing.set_start_method('spawn')
@@ -96,6 +97,7 @@ if __name__ == '__main__':
     ###设定默认参数
     args.stereo = True
     args.disable_vis = True
+    args.Good = True
 
     loop_detect.clear_all_subdirectories(transfomed_pose_path)
     is_first_iteration = True  
@@ -150,7 +152,7 @@ if __name__ == '__main__':
                         droid_loop.video.disps[:len(value_list[0])] = droid_MH_First.video.disps[torch.tensor(value_list[0])]
                         for (t, image, intrinsics) in tqdm(loop_detect.image_stream(args.datapath, stereo=args.stereo, stride=1)):
                             droid_loop.track(t, image, intrinsics=intrinsics)
-                        #droid_loop.terminate()
+                        droid_loop.terminate()
 
                         #计算转换矩阵
                         MH_old_poses = torch.tensor(list_item).tolist()

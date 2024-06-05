@@ -13,10 +13,10 @@ import argparse
 import torchgeometry as tgm
 
 
-group_sequence_path = '/home/peiweipan/fbow/Euroc_Maps/GroupSequence/GroupSequence.txt' 
-loop_folder_path = '/home/peiweipan/Projects/DroidSlam/EurocData/Loop'  
-keyframe_data_file_path = '/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames' 
-transfomed_pose_path = "/home/peiweipan/Projects/DroidSlam/EurocData/ImproveTrans/"  
+group_sequence_path = '/home/peiweipan/fbow/Euroc_Data/GroupSequence/GroupSequence.txt' 
+loop_folder_path = '/home/peiweipan/Projects/DroidSlam/Euroc_Data/Loop'  
+keyframe_data_file_path = '/home/peiweipan/Projects/DroidSlam/Euroc_Data/KeyFrames' 
+transfomed_pose_path = "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos/"  
 #transfomed_pose_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/"  # 替换为新文件夹的路径
 
 
@@ -90,6 +90,9 @@ if __name__ == '__main__':
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=2)
     parser.add_argument("--upsample", action="store_true")
+    parser.add_argument("--Good", action="store_true")
+
+
     args = parser.parse_args()
     #spawn启动更加稳定
     torch.multiprocessing.set_start_method('spawn')
@@ -97,6 +100,7 @@ if __name__ == '__main__':
     ###设定默认参数
     args.stereo = True
     args.disable_vis = True
+    args.Good = True
 
     loop_detect.clear_all_subdirectories(transfomed_pose_path)
     is_first_iteration = True  

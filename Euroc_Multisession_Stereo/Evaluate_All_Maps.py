@@ -135,7 +135,7 @@ if __name__ == '__main__':
 
     droid_MH.video.counter.value=M_First['tstamp'].shape[0]
 
-    traj_est = droid_MH.terminate(image_stream(args.datapath, stereo=args.stereo, stride=1))
+    traj_est = droid_MH.terminate_eva(image_stream(args.datapath, stereo=args.stereo, stride=1))
 
     import evo
     from evo.core.trajectory import PoseTrajectory3D

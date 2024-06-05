@@ -15,6 +15,7 @@ import torchgeometry as tgm
 import torch.nn.functional as F
 import evo
 from evo.core.trajectory import PoseTrajectory3D
+from evo.core.trajectory import PosePath3D
 from evo.tools import file_interface
 from evo.core import sync
 import evo.main_ape as main_ape
@@ -22,10 +23,10 @@ from evo.core.metrics import PoseRelation
 from scipy.spatial.transform import Rotation as R
 
 
-group_sequence_path = '/home/peiweipan/fbow/Euroc_Maps/GroupSequence/GroupSequence.txt' 
-loop_folder_path = '/home/peiweipan/Projects/DroidSlam/EurocData/Loop'  
-keyframe_data_file_path = '/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames' 
-transfomed_pose_path = "/home/peiweipan/Projects/DroidSlam/EurocData/ImproveTrans/"  # 替换为新文件夹的路径
+group_sequence_path = '/home/peiweipan/fbow/Euroc_Data_more/GroupSequence/GroupSequence.txt' 
+loop_folder_path = '/home/peiweipan/Projects/DroidSlam/Euroc_Data/Loop_more'  
+keyframe_data_file_path = '/home/peiweipan/Projects/DroidSlam/Euroc_Data/KeyFrames_more/' 
+transfomed_pose_path = "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos_more/"  # 替换为新文件夹的路径
 
 
 
@@ -98,6 +99,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=2)
     parser.add_argument("--upsample", action="store_true")
+    parser.add_argument("--Good", action="store_true")
     args = parser.parse_args()
     #spawn启动更加稳定
     torch.multiprocessing.set_start_method('spawn')
@@ -105,11 +107,18 @@ if __name__ == '__main__':
     ###设定默认参数
     args.stereo = True
     args.disable_vis = True
+    args.Good = False
+
+    outer_loop_counter = 0  # 追踪外循环的次数
 
     loop_detect.clear_all_subdirectories(transfomed_pose_path)
     is_first_iteration = True  
     with open(group_sequence_path, 'r') as file:
         for line in file:
+            
+            outer_loop_counter += 1  # 每次外循环迭代时增加计数
+            good_point = 0  # 确保每次外循环开始时good_point重置为0
+
             single_loop_folder_path, single_group_sequence_path = find_loop_folder(loop_folder_path, line.strip())
             kd_folder1, kd_folder2 = find_keyframes_data(keyframe_data_file_path, line.strip())
 
@@ -133,8 +142,8 @@ if __name__ == '__main__':
             #通过之前的地图数据给对象赋值
             droid_MH_First = SDroid(args)
             loop_detect.Give_Data(droid_MH_First, MH_Keyframes_First)
-            droid_MH_Second = SDroid(args)
-            loop_detect.Give_Data(droid_MH_Second, MH_Keyframes_Second)
+            #droid_MH_Second = SDroid(args)
+            #loop_detect.Give_Data(droid_MH_Second, MH_Keyframes_Second)
 
             #获取loop照片路径
             Loop_directories_list = loop_detect.get_cam0_subdirectories(single_loop_folder_path)
@@ -144,11 +153,35 @@ if __name__ == '__main__':
             NewCoords = np.empty((0,7))
             W2ToW1 = torch.empty((0, 7))
             
+            loop_count = 0
+            good_point = 0
+            first_order = False
+            exit_loop = False 
+            args.Good = False
+            skip_next_iteration = False
+
+
             idx_accumulator = 0
             for key, value_list in sequence_data.items():
+                if exit_loop:  # 检查是否需要退出外层循环
+                        break       
                 if key > 0:
                         idx_accumulator += len(sequence_data[key - 1]) - 1
-                for idx, list_item in enumerate(value_list[1:], start=1):  # 从第二个列表项开始
+
+                if len(value_list[0:][0]) < 30:
+                    print("参照组中的图片数量不够，放弃")
+                    continue
+
+
+                for idx, list_item in enumerate(value_list[1:], start=1):
+
+                    if skip_next_iteration:
+                        skip_next_iteration = False  # 重置标志
+                        continue  # 跳过本次循环
+                    
+                    loop_count += 1
+                    
+                    # 从第二个列表项开始
                     corresponding_idx = idx_accumulator + (idx - 1)
                     corresponding_loop_dir = Loop_directories_list[corresponding_idx]  # 因为我们从1开始计数，所以需要-1来获得正确的索引
             
@@ -160,106 +193,178 @@ if __name__ == '__main__':
                     #使用value_list中的索引提取数据, 赋予循环对象初值
                     droid_loop.video.poses[:len(value_list[0])] = droid_MH_First.video.poses[torch.tensor(value_list[0])]
                     droid_loop.video.disps[:len(value_list[0])] = droid_MH_First.video.disps[torch.tensor(value_list[0])]
-                    for (t, image, intrinsics) in tqdm(loop_detect.image_stream(args.datapath, stereo=args.stereo, stride=1)):
-                        droid_loop.track(t, image, intrinsics=intrinsics)
-                    #droid_loop.terminate()
-
-                    #计算转换矩阵
-                    MH_old_poses = torch.tensor(list_item).tolist()
-                    MH_new_poses = list(range(len(value_list[0]), (len(value_list[0]) + len(list_item))))
-
-                    old_numpy = droid_MH_Second.video.poses[MH_old_poses].cpu().numpy()
-                    new_numpy = droid_loop.video.poses[MH_new_poses].cpu().numpy()
                     
-                    OriginalCoords = np.vstack([OriginalCoords, old_numpy])
-                    NewCoords = np.vstack([NewCoords, new_numpy])
+                    
+                    for (t, image, intrinsics) in tqdm(loop_detect.image_stream(args.datapath, stereo=args.stereo, stride=1)):
+                        if t < 80:
+                            droid_loop.track(t, image, intrinsics=intrinsics)
+                        else:
+                             break
 
-                    W2ToW1_element=torch.tensor((lietorch.SE3(droid_MH_Second.video.poses[MH_old_poses])*(lietorch.SE3(droid_loop.video.poses[MH_new_poses]).inv())).data.cpu().numpy())                        
-                    W2ToW1 = torch.cat([W2ToW1, W2ToW1_element], 0)
-
-                    del droid_loop
-                    torch.cuda.empty_cache()   
-            
-            while True:
-                NewCoords_length = NewCoords.shape[0]
-                timestamps = np.arange(NewCoords_length)
-
-                traj_ref = PoseTrajectory3D(
-                    positions_xyz=NewCoords[:,:3],
-                    orientations_quat_wxyz=NewCoords[:,3:],
-                    timestamps=np.array(timestamps))
-            
-                traj_est = PoseTrajectory3D(
-                    positions_xyz=OriginalCoords[:,:3],
-                    orientations_quat_wxyz=OriginalCoords[:,3:],
-                    timestamps=np.array(timestamps))
-
-            
-                result = main_ape.ape(traj_est, traj_ref, est_name='traj', 
-                    pose_relation=PoseRelation.translation_part, align=True, correct_scale=False)
-                
-                print(result.stats["std"])
-                
-                if result.stats["std"]>0.05:
-                    W2ToW1, removed_row = loop_detect.remove_outlier_row(W2ToW1)
-                    OriginalCoords = loop_detect.remove_row_from_array(OriginalCoords, removed_row)
-                    NewCoords = loop_detect.remove_row_from_array(NewCoords, removed_row)
-                else:
-                    break
-            
+                    badT = droid_loop.frontend.badT
+                    print(f"第 {outer_loop_counter} 次地图之间的匹配，匹配失败的图片张数为：{len(badT)}")
+                    if (len(badT)>4):
+                         print("这一组图片匹配失败，换到下一组")
+                         del droid_loop
+                         torch.cuda.empty_cache()
 
 
+                    if loop_count == 1 and len(badT) < 5:
+                        del droid_loop
+                        torch.cuda.empty_cache()
 
-            
-            alignment_transformation_sim3 = result.np_arrays["alignment_transformation_sim3"]
-            rotation_matrix = alignment_transformation_sim3[:3, :3]
-            translation_vector = alignment_transformation_sim3[:3, 3]
-            rotation_quaternion = R.from_matrix(rotation_matrix).as_quat() 
-            combined_array = np.hstack([translation_vector, rotation_quaternion])
+                        droid_loop = SDroid(args)
+                        args.Good = True
 
-            # 将 NumPy 数组转换为 PyTorch 张量
-            T = torch.from_numpy(combined_array)
 
-            # 改变张量的数据类型为 torch.float32
-            T = T.to(dtype=torch.float32)
-            print(T)
+                        droid_loop = SDroid(args)
+                        droid_loop.video.poses[:len(value_list[0])] = droid_MH_First.video.poses[torch.tensor(value_list[0])]
+                        droid_loop.video.disps[:len(value_list[0])] = droid_MH_First.video.disps[torch.tensor(value_list[0])]
+                        for (t, image, intrinsics) in tqdm(loop_detect.image_stream(args.datapath, stereo=args.stereo, stride=1)):
+                            droid_loop.track(t, image, intrinsics=intrinsics) 
 
-            #转换坐标并储存，节省了空间
-            New_MH_Keyframes_Second_pose = loop_detect.getTransformedPoses(T, kd_folder2)
-            new_pose_file_path = os.path.join(kd_folder2, "newPosBeforeBackend.npy")
-            np.save(new_pose_file_path, New_MH_Keyframes_Second_pose)  # 使用完整路径保存
+                        droid_loop.terminate()
+
+                        
+
+
+                        
+                        good_point += 1
+                        is_increasing = all(x < y for x, y in zip(list_item, list_item[1:]))
+                        if is_increasing:
+                            first_order = True
+                            images1 = droid_loop.video.images[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()
+                            poses1 = droid_loop.video.poses[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()
+                            disps1 = droid_loop.video.disps[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()
+                            intrinsics1 = droid_loop.video.intrinsics[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()
+                            del droid_loop
+                            torch.cuda.empty_cache()
+                        else:
+                            images1 = droid_loop.video.images[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()[::-1]
+                            poses1 = droid_loop.video.poses[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()[::-1]
+                            disps1 = droid_loop.video.disps[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()[::-1]
+                            intrinsics1 = droid_loop.video.intrinsics[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()[::-1]
+                            del droid_loop
+                            torch.cuda.empty_cache()
+                    
+                    if loop_count == 2 and len(badT) < 5:
+                            good_point += 1
+                            del droid_loop
+                            torch.cuda.empty_cache()
+
+                            droid_loop = SDroid(args)
+                            args.Good = True
+
+
+                            droid_loop = SDroid(args)
+                            droid_loop.video.poses[:len(value_list[0])] = droid_MH_First.video.poses[torch.tensor(value_list[0])]
+                            droid_loop.video.disps[:len(value_list[0])] = droid_MH_First.video.disps[torch.tensor(value_list[0])]
+                            for (t, image, intrinsics) in tqdm(loop_detect.image_stream(args.datapath, stereo=args.stereo, stride=1)):
+                                droid_loop.track(t, image, intrinsics=intrinsics) 
+
+                            droid_loop.terminate()
+                            
+                            
+                            
+
+                            is_increasing = all(x < y for x, y in zip(list_item, list_item[1:]))
+                            if is_increasing:
+                                images2 = droid_loop.video.images[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()
+                                poses2 = droid_loop.video.poses[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()
+                                disps2 = droid_loop.video.disps[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()
+                                intrinsics2 = droid_loop.video.intrinsics[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()
+                                del droid_loop
+                                torch.cuda.empty_cache()
+                            else:
+                                images2 = droid_loop.video.images[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()[::-1]
+                                poses2 = droid_loop.video.poses[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()[::-1]
+                                disps2 = droid_loop.video.disps[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()[::-1]
+                                intrinsics2 = droid_loop.video.intrinsics[len(value_list[0]):(len(value_list[0]) + len(list_item))].cpu().numpy()[::-1]
+                                del droid_loop
+                                torch.cuda.empty_cache()
+
+                    if good_point==2 and first_order == True:
+                        images = np.concatenate((images2, images1), axis=0)
+                        poses = np.concatenate((poses2, poses1), axis=0)
+                        disps = np.concatenate((disps2, disps1), axis=0)
+                        intrinsics = np.concatenate((intrinsics2, intrinsics1), axis=0)
+
+                        kd_folder_name = os.path.basename(kd_folder2)
+                        folder_path = os.path.join(transfomed_pose_path, kd_folder_name)
+                        # 创建文件夹（如果尚不存在）
+                        os.makedirs(folder_path, exist_ok=True)         
+
+                        path2 = os.path.join(transfomed_pose_path, kd_folder_name, "poses.npy")
+                        np.save(path2, poses) 
+
+                        path2 = os.path.join(transfomed_pose_path, kd_folder_name, "images.npy")
+                        np.save(path2, images) 
+
+                        path2 = os.path.join(transfomed_pose_path, kd_folder_name, "intrinsics.npy")
+                        np.save(path2, intrinsics) 
+
+                        path2 = os.path.join(transfomed_pose_path, kd_folder_name, "disps.npy")
+                        np.save(path2, disps) 
+
+                        exit_loop = True
+                        break
+
+                    if good_point==2 and first_order == False:
+                        images = np.concatenate((images1, images2), axis=0)
+                        poses = np.concatenate((poses1, poses2), axis=0)
+                        disps = np.concatenate((disps1, disps2), axis=0)
+                        intrinsics = np.concatenate((intrinsics1, intrinsics2), axis=0)
+
+                        kd_folder_name = os.path.basename(kd_folder2)
+                        folder_path = os.path.join(transfomed_pose_path, kd_folder_name)
+                        # 创建文件夹（如果尚不存在）
+                        os.makedirs(folder_path, exist_ok=True)  
+
+                        path2 = os.path.join(transfomed_pose_path, kd_folder_name, "poses.npy")
+                        np.save(path2, poses) 
+
+                        path2 = os.path.join(transfomed_pose_path, kd_folder_name, "images.npy")
+                        np.save(path2, images) 
+
+                        path2 = os.path.join(transfomed_pose_path, kd_folder_name, "intrinsics.npy")
+                        np.save(path2, intrinsics) 
+
+                        path2 = os.path.join(transfomed_pose_path, kd_folder_name, "disps.npy")
+                        np.save(path2, disps) 
+
+
+                        exit_loop = True
+                        break
+                    
+                    
+                    if loop_count == 1 and good_point ==0:
+                            skip_next_iteration = True  # 设置跳过下一次循环的标志
+                            loop_count = 0
+                            good_point = 0
+                            first_order = False
+                            args.Good = False
+                            #break
+                    elif loop_count == 2:
+                            loop_count = 0
+                            good_point = 0
+                            first_order = False
+                            args.Good = False
+                            #break
+
+
+            if good_point != 2:
+                print(f"外循环失败于第 {outer_loop_counter} 次迭代，所有的loop都没有衔接上")
+                break  # 如果不满足条件则跳出最外层循环                 
 
             #清理CUDA缓存
             del droid_MH_First
-            del droid_MH_Second
+            #del droid_MH_Second
             torch.cuda.empty_cache()
 
-            #读取数据并且存储到非显卡内存中
-            MH_First={}
-            MH_Second={}
-            loop_detect.Give_Data_To_Var(MH_First,MH_Second,kd_folder1,kd_folder2)
-
-            droid_Pairs = SDroid(args)
-            droid_Pairs.video.images[:MH_First['images'].shape[0] + MH_Second['images'].shape[0]] = torch.cat([torch.from_numpy(MH_First['images']), torch.from_numpy(MH_Second['images'])], dim=0)
-            droid_Pairs.video.poses[:MH_First['poses'].shape[0] + MH_Second['poses'].shape[0]] = torch.cat([torch.from_numpy(MH_First['poses']), torch.from_numpy(MH_Second['poses'])], dim=0)
-            droid_Pairs.video.disps[:MH_First['disps'].shape[0] + MH_Second['disps'].shape[0]] = torch.cat([torch.from_numpy(MH_First['disps']), torch.from_numpy(MH_Second['disps'])], dim=0)
-            droid_Pairs.video.fmaps[:MH_First['fmaps'].shape[0] + MH_Second['fmaps'].shape[0]] = torch.cat([torch.from_numpy(MH_First['fmaps']), torch.from_numpy(MH_Second['fmaps'])], dim=0)
-            droid_Pairs.video.inps[:MH_First['inps'].shape[0] + MH_Second['inps'].shape[0]] = torch.cat([torch.from_numpy(MH_First['inps']), torch.from_numpy(MH_Second['inps'])], dim=0)
-            droid_Pairs.video.nets[:MH_First['nets'].shape[0] + MH_Second['nets'].shape[0]] = torch.cat([torch.from_numpy(MH_First['nets']), torch.from_numpy(MH_Second['nets'])], dim=0)
-            droid_Pairs.video.intrinsics[:MH_First['intrinsics'].shape[0] + MH_Second['intrinsics'].shape[0]] = torch.cat([torch.from_numpy(MH_First['intrinsics']), torch.from_numpy(MH_Second['intrinsics'])], dim=0)
-
-            droid_Pairs.video.counter.value=MH_First['poses'].shape[0] + MH_Second['poses'].shape[0]
-            droid_Pairs.terminate()
-
-            selected_files = ['disps.npy', 'fmaps.npy', 'images.npy', 'inps.npy', 'intrinsics.npy', 'nets.npy', 'tstamps.npy']
-            loop_detect.copy_to_transformed_file(transfomed_pose_path, kd_folder2, selected_files)
-            after_Back_pose = droid_Pairs.video.poses[len_First:len_First+len_Second].cpu().numpy()
-            kd_folder_name = os.path.basename(kd_folder2)
-            after_back_pose_file_path = os.path.join(transfomed_pose_path, kd_folder_name, "poses.npy")
-            np.save(after_back_pose_file_path, after_Back_pose) 
-
-            del droid_Pairs
+            selected_files = ['fmaps.npy', 'inps.npy', 'nets.npy', 'tstamps.npy']
+            loop_detect.copy_to_transformed_file(transfomed_pose_path, kd_folder2, selected_files) 
             torch.cuda.empty_cache()
+
 
 
             

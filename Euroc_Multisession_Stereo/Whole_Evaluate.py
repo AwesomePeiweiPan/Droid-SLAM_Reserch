@@ -21,23 +21,31 @@ from droid import Droid
 import torch.nn.functional as F
 
 # 定义轨迹文件的路径
-true_paths = ["/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_01_easy.txt",
-              "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_02_easy.txt",
-              "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_03_medium.txt",]
-              #"/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_04_difficult.txt",
-              #"/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_05_difficult.txt",]
+true_paths = [    
+            "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_01_easy.txt",
+            "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_02_easy.txt",
+            "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_03_medium.txt",
+            "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_04_difficult.txt",
+            "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_05_difficult.txt",
+            ]
 
-datapaths = ["/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH01/mav0/cam0/data/",
-             "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH02/mav0/cam0/data/",
-             "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH03/mav0/cam0/data/",]
-            # "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH04/mav0/cam0/data/",
-             #"/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH05/mav0/cam0/data/",]
+datapaths = [
+            "/home/peiweipan/Projects/DroidSlam/Euroc_Data/OriginalData/MH01/mav0/cam0/data/",
+             "/home/peiweipan/Projects/DroidSlam/Euroc_Data/OriginalData/MH02/mav0/cam0/data/",
+             "/home/peiweipan/Projects/DroidSlam/Euroc_Data/OriginalData/MH03/mav0/cam0/data/",
+             "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH04/mav0/cam0/data/",
+             "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH05/mav0/cam0/data/",
+             ]
 
-DataNum_paths = ["/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD01/",
-                 "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD02/",
-                 "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD03/",]
-                 #"/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD04/",
-                 #"/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD05/"]
+DataNum_paths = [
+                "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos_more/KD01/",
+                 "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos_more/KD02/",
+                 "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos_more/KD03/",
+                 "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos_more/KD04/",
+                 "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos_more/KD05/"
+                 ]
+
+is_First_EVA = True
 
 
 
@@ -116,6 +124,7 @@ if __name__ == '__main__':
     parser.add_argument("--frontend_window", type=int, default=20)
     parser.add_argument("--frontend_radius", type=int, default=2)
     parser.add_argument("--frontend_nms", type=int, default=1)
+    #24,2,2
     parser.add_argument("--backend_thresh", type=float, default=24.0)
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=2)
@@ -129,12 +138,16 @@ if __name__ == '__main__':
     droid_positions = []
     droid_orientations = []
     droid_timestamps = []
-
+    
     for datapath, datanum_path in zip(datapaths, DataNum_paths):
         
         M_Data = {}
         M_Data['tstamps'] = np.load(os.path.join(datanum_path, 'tstamps.npy'))
-        M_Data['poses'] = np.load(os.path.join(datanum_path, 'poses.npy'))
+        if is_First_EVA:
+            M_Data['poses'] = np.load(os.path.join(datanum_path, 'poses.npy'))
+        else:
+            #M_Data['poses'] = np.load(os.path.join(datanum_path, 'poses.npy'))
+            M_Data['poses'] = np.load(os.path.join(datanum_path, 'backend_finished_poses.npy'))
         M_Data['disps'] = np.load(os.path.join(datanum_path, 'disps.npy'))
         M_Data['images'] = np.load(os.path.join(datanum_path, 'images.npy'))
         M_Data['intrinsics'] = np.load(os.path.join(datanum_path, 'intrinsics.npy'))
@@ -154,7 +167,12 @@ if __name__ == '__main__':
         droid_MH.video.nets[:M_Data['nets'].shape[0]] = torch.from_numpy(M_Data['nets'])
         droid_MH.video.counter.value=M_Data['tstamps'].shape[0]
 
-        droid_traj = droid_MH.terminate(image_stream(args.datapath, stereo=args.stereo, stride=1))
+       
+        if is_First_EVA:
+            droid_traj = droid_MH.terminate_eva(image_stream(args.datapath, stereo=args.stereo, stride=1))
+            droid_MH.save_backend_finished_poses(datanum_path)
+        else:
+            droid_traj = droid_MH.terminate_eva_second(image_stream(args.datapath, stereo=args.stereo, stride=1))
 
         del droid_MH
         torch.cuda.empty_cache()
@@ -203,6 +221,6 @@ if __name__ == '__main__':
     traj_ref, traj_est = sync.associate_trajectories(traj_ref, traj_est)
 
     result = main_ape.ape(traj_ref, traj_est, est_name='traj', 
-        pose_relation=PoseRelation.translation_part, align=True, correct_scale=True)
+        pose_relation=PoseRelation.translation_part, align=True, correct_scale=False)
 
     print(result)

@@ -1,5 +1,5 @@
 import sys
-sys.path.append('droid_slam')
+sys.path.append('/home/peiweipan/Projects/DroidSlam/droid_slam')
 
 from tqdm import tqdm
 import numpy as np
@@ -26,12 +26,12 @@ def image_stream(datapath, use_depth=False, stride=1):
     """ image generator """
 
     fx, fy, cx, cy = np.loadtxt(os.path.join(datapath, 'calibration.txt')).tolist()
-    image_list = sorted(glob.glob(os.path.join(datapath, 'rgb', '*.png')))[::stride]
+    image_list = sorted(glob.glob(os.path.join(datapath, 'color', '*.jpg')))[::stride]
     depth_list = sorted(glob.glob(os.path.join(datapath, 'depth', '*.png')))[::stride]
 
     for t, (image_file, depth_file) in enumerate(zip(image_list, depth_list)):
         image = cv2.imread(image_file)
-        depth = cv2.imread(depth_file, cv2.IMREAD_ANYDEPTH) / 5000.0
+        depth = cv2.imread(depth_file, cv2.IMREAD_ANYDEPTH) / 1000.0
 
         h0, w0, _ = image.shape
         h1 = int(h0 * np.sqrt((384 * 512) / (h0 * w0)))
@@ -64,12 +64,12 @@ if __name__ == '__main__':
     parser.add_argument("--disable_vis", action="store_true")
 
     parser.add_argument("--beta", type=float, default=0.5)
-    parser.add_argument("--filter_thresh", type=float, default=2.0)
-    parser.add_argument("--warmup", type=int, default=8)
-    parser.add_argument("--keyframe_thresh", type=float, default=3.5)
+    parser.add_argument("--filter_thresh", type=float, default=3.0)
+    parser.add_argument("--warmup", type=int, default=20)
+    parser.add_argument("--keyframe_thresh", type=float, default=2.0)
     parser.add_argument("--frontend_thresh", type=float, default=16.0)
     parser.add_argument("--frontend_window", type=int, default=16)
-    parser.add_argument("--frontend_radius", type=int, default=1)
+    parser.add_argument("--frontend_radius", type=int, default=5)
     parser.add_argument("--frontend_nms", type=int, default=0)
 
     parser.add_argument("--stereo", action="store_true")
@@ -79,6 +79,7 @@ if __name__ == '__main__':
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=3)
     args = parser.parse_args()
+    args.upsample = False
 
     torch.multiprocessing.set_start_method('spawn')
 
@@ -87,7 +88,7 @@ if __name__ == '__main__':
 
     # this can usually be set to 2-3 except for "camera_shake" scenes
     # set to 2 for test scenes
-    stride = 1
+    stride = 5
 
     tstamps = []
     for (t, image, depth, intrinsics) in tqdm(image_stream(args.datapath, use_depth=True, stride=stride)):
@@ -100,12 +101,13 @@ if __name__ == '__main__':
         
         droid.track(t, image, depth, intrinsics=intrinsics)
     
-    traj_est = droid.terminate(image_stream(args.datapath, use_depth=False, stride=stride))
+    #traj_est = droid.terminate(image_stream(args.datapath, use_depth=False, stride=stride))
+    droid.terminate(image_stream(args.datapath, use_depth=False, stride=stride))
 
     ### run evaluation ###
 
     print("#"*20 + " Results...")
-
+"""
     import evo
     from evo.core.trajectory import PoseTrajectory3D
     from evo.tools import file_interface
@@ -132,3 +134,4 @@ if __name__ == '__main__':
 
     print(result.stats)
 
+"""

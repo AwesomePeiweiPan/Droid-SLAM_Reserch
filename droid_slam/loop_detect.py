@@ -293,7 +293,7 @@ def printTransformMatrix(W2ToW1):
     print(column_means)
 
 #通过存储的中间文件给整个第二个地图新的坐标
-def getTransformedPoses(reconstruction_path_T, reconstruction_path_Poses):
+def getTransformedPoses_2(reconstruction_path_T, reconstruction_path_Poses):
     Data = {}
     Data['Transformation'] = np.load(f"reconstructions/{reconstruction_path_T}/T_MH01_MH02.npy")
     Data['poses'] = np.load(f"reconstructions/{reconstruction_path_Poses}/poses.npy")
@@ -321,6 +321,18 @@ def getTransformedPoses(T, second_coor):
     new_pose = torch.tensor((T_l[sequence].inv()*(MH_poses[sequence])).data.cpu().numpy())
     return new_pose
 
+def getTransformedPoses2(T, second_coor):
+    Data = {}
+    Data['poses'] = np.load(os.path.join(second_coor, 'poses.npy'))
+    poses = torch.from_numpy(Data['poses'])
+
+    length = len(Data['poses'])
+    sequence = list(range(length))
+    T_tensor = T.repeat(length, 1)
+    T_l=lietorch.SE3(T_tensor)
+    MH_poses = lietorch.SE3(poses)
+    new_pose = torch.tensor((T_l[sequence]*(MH_poses[sequence])).data.cpu().numpy())
+    return new_pose
 
 
 
@@ -396,12 +408,11 @@ def clear_all_subdirectories(path):
         print(f"The path does not exist: {path}")
 
 
-def remove_outlier_row(tensor):
-    # 计算前三列的平均值
-    fouth_values = compute_filtered_mean(tensor)
+def remove_outlier_row(tensor, tensor2):
+    
 
     # 计算每一行与平均值的差异
-    diffs = (tensor - fouth_values).norm(dim=1)
+    diffs = (tensor[:, :3] - tensor2[:, :3]).norm(dim=1)
 
     # 找到差异最大的行
     max_diff_index = torch.argmax(diffs)

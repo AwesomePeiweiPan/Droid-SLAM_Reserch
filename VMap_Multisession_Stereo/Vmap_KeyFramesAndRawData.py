@@ -29,7 +29,7 @@ if __name__ == '__main__':
     parser.add_argument("--beta", type=float, default=0.3)
     parser.add_argument("--filter_thresh", type=float, default=2.4)
     parser.add_argument("--warmup", type=int, default=15)
-    parser.add_argument("--keyframe_thresh", type=float, default=3.5)
+    parser.add_argument("--keyframe_thresh", type=float, default=2.5)
     parser.add_argument("--frontend_thresh", type=float, default=17.5)
     parser.add_argument("--frontend_window", type=int, default=20)
     parser.add_argument("--frontend_radius", type=int, default=2)
@@ -49,32 +49,32 @@ if __name__ == '__main__':
 
     ###设定图片数据源
     datapaths = [
-    #"/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site1/V01/cam0/data/",
+    "/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site1/V01/cam0/data/",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site1/V02/cam0/data/",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site1/V03/cam0/data/",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V01/cam0/data/",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V02/cam0/data/",
-    "/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V03/cam0/data/",
+    #"/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V03/cam0/data/",
     ]
 
     ###设定关键帧存储的目标文件
     dst_paths = [
-    #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site1/cam0/V01/",
+    "/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes_new/site1/cam0/V01/",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site1/cam0/V02/",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site1/cam0/V03/",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/cam0/V01/",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/cam0/V02/",
-    "/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/cam0/V03/",
+    #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/cam0/V03/",
     ]
 
     ###设定关键帧数字数据的目标文件
     reconstruction_paths = [
-    #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site1/KD01",
+    "/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes_new/site1/KD01",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site1/KD02",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site1/KD03",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/KD01",
     #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/KD02",
-    "/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/KD03",
+    #"/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/KD03",
     ]
 
     # 确保所有列表的长度相同

@@ -105,8 +105,13 @@ class Droid:
         np.save(os.path.join(reconstruction_path, "inps.npy"), self.video.inps[:t].cpu().numpy())
         np.save(os.path.join(reconstruction_path, "nets.npy"), self.video.nets[:t].cpu().numpy())
 
+    def save_backend_finished_poses(self, reconstruction_path):
+        from pathlib import Path
+        t = self.video.counter.value
+        np.save(os.path.join(reconstruction_path, "backend_finished_poses.npy"), self.video.poses[:t].cpu().numpy())
 
-    def terminate(self, reconstruction_path):
+
+    def terminate(self, stream=None):
         """ terminate the visualization process, return poses [t, q] """
 
         del self.frontend
@@ -119,7 +124,7 @@ class Droid:
         print("#" * 32)
         self.backend(12)
 
-        self.save_reconstruction(reconstruction_path)
+        #self.save_reconstruction(reconstruction_path)
 
         #camera_trajectory = self.traj_filler(stream)
         #return camera_trajectory.inv().data.cpu().numpy()
@@ -137,6 +142,13 @@ class Droid:
         print("#" * 32)
         self.backend(12)
 
+        camera_trajectory = self.traj_filler(stream)
+        return camera_trajectory.inv().data.cpu().numpy()
+
+    def terminate_eva_second(self, stream=None):
+        """ terminate the visualization process, return poses [t, q] """
+
+        del self.frontend
         camera_trajectory = self.traj_filler(stream)
         return camera_trajectory.inv().data.cpu().numpy()
 

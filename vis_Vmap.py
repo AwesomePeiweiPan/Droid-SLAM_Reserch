@@ -46,14 +46,15 @@ if __name__ == "__main__":
     parser.add_argument("--backend_radius", type=int, default=2)
     parser.add_argument("--backend_nms", type=int, default=2)
     parser.add_argument("--upsample", action="store_true")
+    parser.add_argument("--Good", action="store_true")
     args = parser.parse_args()
     #spawn启动更加稳定
     torch.multiprocessing.set_start_method('spawn')
 
 
-    M1_path = "/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/KD01/"
-    M2_path = "/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/KD02/"
-    M3_path = "/home/peiweipan/Projects/DroidSlam/VMapData/Keyframes/site2/KD03/"
+    M1_path = "/data/peiweipan/VMapData/TransformedKeyPos/site2/KD01/"
+    M2_path = "/data/peiweipan/VMapData/TransformedKeyPos/site2/KD02/"
+    M3_path = "/data/peiweipan/VMapData/TransformedKeyPos/site2/KD03/"
 
         
 
@@ -131,7 +132,7 @@ if __name__ == "__main__":
         print(i)
         droid_MH.video.dirty[:droid_MH.video.counter.value] = True
         droid_MH.video.counter.value += 5
-        time.sleep(0.05)
+        time.sleep(0.1)
         
 
     print("Finished")

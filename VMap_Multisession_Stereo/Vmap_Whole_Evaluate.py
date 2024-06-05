@@ -20,18 +20,27 @@ from torch.multiprocessing import Process
 from droid import Droid
 import torch.nn.functional as F
 
-# 定义轨迹文件的路径
+# 定义轨迹文件的路2
 true_paths = ["/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/V2_01_easy.txt",
               "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/V2_02_medium.txt",
-              "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/V2_03_difficult.txt",]
+              "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/V2_03_difficult.txt",
+              #"/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/V2_01_easy.txt",
+              #"/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/V2_02_medium.txt",
+              ]
 
 datapaths = ["/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V01/cam0/data/",
              "/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V02/cam0/data/",
-             "/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V03/cam0/data/",]
+             "/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V03/cam0/data/",
+             #"/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V01/cam0/data/",
+             #"/home/peiweipan/Projects/DroidSlam/VMapData/OriginalData/site2/V02/cam0/data/",
+             ]
 
 DataNum_paths = ["/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/KD01/",
                  "/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/KD02/",
-                 "/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/KD03/",]
+                 "/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/KD03/",
+                 #"/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/KD01/",
+                 #"/home/peiweipan/Projects/DroidSlam/VMapData/TransformedKeyPos/site2/KD02/",
+                 ]
 
 
 
@@ -197,6 +206,6 @@ if __name__ == '__main__':
     traj_ref, traj_est = sync.associate_trajectories(traj_ref, traj_est)
 
     result = main_ape.ape(traj_ref, traj_est, est_name='traj', 
-        pose_relation=PoseRelation.translation_part, align=True, correct_scale=True)
+        pose_relation=PoseRelation.translation_part, align=True, correct_scale=False)
 
     print(result)

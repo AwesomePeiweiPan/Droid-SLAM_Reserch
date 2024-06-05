@@ -98,9 +98,9 @@ if __name__ == '__main__':
 
     torch.multiprocessing.set_start_method('spawn')
 
-    args.datapath = "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH05/mav0/cam0/data/"
-    M1_path = "/home/peiweipan/Projects/DroidSlam/EurocData/TransformedKeyPos/KD05/"
-    args.gt = "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_05_difficult.txt"
+    args.datapath = "/home/peiweipan/Projects/DroidSlam/EurocData/OriginalData/MH01/mav0/cam0/data/"
+    M1_path = "/home/peiweipan/Projects/DroidSlam/EurocData/KeyFrames_Improve/KD01/"
+    args.gt = "/home/peiweipan/Projects/DroidSlam/data/euroc_groundtruth/MH_01_easy.txt"
     args.stereo = True
     args.disable_vis = True
 
@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
     droid_MH.video.counter.value=M_First['tstamps'].shape[0]
 
-    traj_est = droid_MH.terminate(image_stream(args.datapath, stereo=args.stereo, stride=1))
+    traj_est = droid_MH.terminate_eva(image_stream(args.datapath, stereo=args.stereo, stride=1))
 
     import evo
     from evo.core.trajectory import PoseTrajectory3D
@@ -139,9 +139,9 @@ if __name__ == '__main__':
     tstamps = [float(x.split('/')[-1][:-4]) for x in images_list]
 
     traj_est = PoseTrajectory3D(
-        positions_xyz=1.10 * traj_est[:,:3],
-        orientations_quat_wxyz=traj_est[:,3:],
-        timestamps=np.array(tstamps))
+        positions_xyz=1.10 * traj_est[2000:3000,:3],
+        orientations_quat_wxyz=traj_est[2000:3000,3:],
+        timestamps=np.array(tstamps[2000:3000]))
     
 
 

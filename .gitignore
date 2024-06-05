@@ -161,6 +161,10 @@ Notes/*
 EurocData/*
 HiltiData/*
 VMapData/*
+Euroc_Multisession_Stereo/*
+droid.pth/*
+rgbd_data
+
 
 
 

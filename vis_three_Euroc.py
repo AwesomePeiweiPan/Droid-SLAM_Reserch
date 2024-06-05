@@ -51,11 +51,9 @@ if __name__ == "__main__":
     #spawn启动更加稳定
     torch.multiprocessing.set_start_method('spawn')
 
-    M1_path = "/data/peiweipan/Euroc_Data/TransformedKeyPos_new/KD01/"
-    M2_path = "/data/peiweipan/Euroc_Data/TransformedKeyPos_new/KD02/"
-    M3_path = "/data/peiweipan/Euroc_Data/TransformedKeyPos_new/KD03/"
-    M4_path = "/data/peiweipan/Euroc_Data/TransformedKeyPos_new/KD04/"
-    M5_path = "/data/peiweipan/Euroc_Data/TransformedKeyPos_new/KD05/"
+    M1_path = "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos_new/KD01/"
+    M2_path = "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos_new/KD02/"
+    M3_path = "/home/peiweipan/Projects/DroidSlam/Euroc_Data/TransformedKeyPos_new/KD03/"
 
     M_First = {}
     M_First['poses'] = np.load(os.path.join(M1_path, 'backend_finished_poses.npy'))
@@ -77,19 +75,6 @@ if __name__ == "__main__":
     M_Third['images'] = np.load(os.path.join(M3_path, 'images.npy'))
     M_Third['intrinsics'] = np.load(os.path.join(M3_path, 'intrinsics.npy'))
 
-    # M_Fourth
-    M_Fourth = {}
-    M_Fourth['poses'] = np.load(os.path.join(M4_path, 'backend_finished_poses.npy'))
-    M_Fourth['disps'] = np.load(os.path.join(M4_path, 'disps.npy'))
-    M_Fourth['images'] = np.load(os.path.join(M4_path, 'images.npy'))
-    M_Fourth['intrinsics'] = np.load(os.path.join(M4_path, 'intrinsics.npy'))
-
-    # M_Fifth
-    M_Fifth = {}
-    M_Fifth['poses'] = np.load(os.path.join(M5_path, 'backend_finished_poses.npy'))
-    M_Fifth['disps'] = np.load(os.path.join(M5_path, 'disps.npy'))
-    M_Fifth['images'] = np.load(os.path.join(M5_path, 'images.npy'))
-    M_Fifth['intrinsics'] = np.load(os.path.join(M5_path, 'intrinsics.npy'))
 
     droid_MH = SDroid(args)
     # 初始化一个列表，用于存储每组数据中 poses 的长度
@@ -108,7 +93,7 @@ if __name__ == "__main__":
     current_pos = M_First['poses'].shape[0]
 
     # 为 M_Second, M_Third, M_Fourth, M_Fifth 进行同样的操作
-    datasets = [M_Second, M_Third, M_Fourth, M_Fifth]
+    datasets = [M_Second, M_Third]
     for dataset in datasets:
         poses_len = dataset['poses'].shape[0]
         disps_len = dataset['disps'].shape[0]
@@ -125,7 +110,7 @@ if __name__ == "__main__":
         poses_lengths.append(poses_len)
 
     # 假设 MH_Mul['poses'] 已经存在并且我们知道它的形状
-    end_value =M_First['poses'].shape[0] +M_Second['poses'].shape[0]+M_Third['poses'].shape[0]+M_Fourth['poses'].shape[0]+M_Fifth['poses'].shape[0]
+    end_value =M_First['poses'].shape[0] +M_Second['poses'].shape[0]+M_Third['poses'].shape[0]
     # 初始设置
     i=0
     droid_MH.video.counter.value = 0       
@@ -134,9 +119,6 @@ if __name__ == "__main__":
     i=M_First['poses'].shape[0] +M_Second['poses'].shape[0]
     droid_MH.video.imageSeries[i:i+M_Third['poses'].shape[0]] = 4
     i=i+M_Third['poses'].shape[0]
-    droid_MH.video.imageSeries[i:i+M_Fourth['poses'].shape[0]] = 6
-    i=i+M_Fourth['poses'].shape[0]
-    droid_MH.video.imageSeries[i:i+M_Fifth['poses'].shape[0]] = 9
 
 
     time.sleep(5)
